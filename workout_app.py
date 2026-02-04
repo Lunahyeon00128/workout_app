@@ -12,17 +12,14 @@ if 'exercise_index' not in st.session_state:
 if 'last_selected_date' not in st.session_state:
     st.session_state['last_selected_date'] = None
 
-# 제목을 조금 더 심플하게 변경 (공간 절약)
+# 제목
 st.subheader("💪 Lunahyeon's 운동일지")
 
 # 탭 구성
-tab1, tab2 = st.tabs(["✅ 기록 입력", "📊 주차별 기록 확인"])
+tab1, tab2 = st.tabs(["✅ 기록 입력", "📝 기록 수정/삭제"])
 
 with tab1:
-    # ==========================================
-    # ★ 수정된 부분: expander(접기) 제거하고 바로 보여주기
-    # ==========================================
-    st.caption("📅 날짜 및 신체 정보") # 작은 소제목으로 대체
+    st.caption("📅 날짜 및 신체 정보") 
     
     col1, col2 = st.columns(2)
     with col1:
@@ -31,7 +28,6 @@ with tab1:
         current_time = datetime.now().strftime("%H:%M")
         arrival_time = st.text_input("시간", value=current_time, label_visibility="collapsed")
     
-    # 체중 입력도 바로 아래에 배치
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
     # --- 2. 요일별 루틴 설정 ---
@@ -56,20 +52,18 @@ with tab1:
     if weekday in [1, 3]: # 화, 목
         exercise_list = routine_B
         routine_name = "🔥 하체 집중 루틴 (화/목)"
-        style_color = "#FF4B4B" # 빨간색 포인트
+        style_color = "#FF4B4B" 
     else:
         exercise_list = routine_A
         routine_name = "💪 상체/전신 루틴 (월/수/금)"
-        style_color = "#1E90FF" # 파란색 포인트
+        style_color = "#1E90FF" 
 
-    # 날짜 변경 시 루틴 초기화
     if st.session_state['last_selected_date'] != date:
         st.session_state['exercise_index'] = 0
         st.session_state['last_selected_date'] = date
         st.rerun()
 
     st.markdown("---")
-    # 루틴 안내를 좀 더 예쁘게 (색상 적용)
     st.markdown(f"<div style='background-color: {style_color}; padding: 10px; border-radius: 5px; color: white; text-align: center; margin-bottom: 10px;'>{routine_name}</div>", unsafe_allow_html=True)
     
     st.subheader("🔥 운동 수행 체크")
@@ -102,7 +96,6 @@ with tab1:
     # --- 입력 폼 ---
     with st.form("workout_form", clear_on_submit=True):
         
-        # [CASE 1] 러닝/걷기
         if selected_exercise == "러닝/걷기":
             st.markdown("🏃‍♀️ **유산소 설정**")
             c1, c2, c3 = st.columns(3)
@@ -116,7 +109,6 @@ with tab1:
             st.caption(f"설정: {run_minutes}분 / 속도 {run_speed} / 경사 {run_incline}")
             sets_done = ["Completed"] 
 
-        # [CASE 2] 근력 운동
         else:
             c1, c2 = st.columns([1, 1])
             with c1:
@@ -138,7 +130,6 @@ with tab1:
         
         submit_btn = st.form_submit_button("기록 저장 & 다음 운동으로 (+)", use_container_width=True)
 
-    # 저장 로직
     if submit_btn:
         if selected_exercise != "러닝/걷기" and not sets_done:
             st.warning("⚠️ 수행한 칸을 하나 이상 체크해주세요!")
@@ -181,32 +172,60 @@ with tab1:
             st.success(f"[{selected_exercise}] 저장 완료! 다음: [{exercise_list[next_idx]}]")
             st.rerun()
 
-# --- 탭 2: 주차별 기록 확인 ---
+# --- 탭 2: 기록 관리 (수정 및 삭제) ---
 with tab2:
+    st.subheader("📝 전체 기록 관리")
     if os.path.exists('my_workout_log.csv'):
+        # 데이터 불러오기
         df = pd.read_csv('my_workout_log.csv')
-        df['temp_date'] = pd.to_datetime(df['날짜'].str.slice(0, 10))
-        df['year_month'] = df['temp_date'].dt.strftime('%Y-%m')
-        available_months = sorted(df['year_month'].unique(), reverse=True)
         
-        st.subheader("📅 월별 기록 선택")
-        if available_months:
-            selected_month = st.selectbox("확인하고 싶은 달을 선택하세요", available_months)
-            month_df = df[df['year_month'] == selected_month].copy()
-            month_df['week_num'] = (month_df['temp_date'].dt.day - 1) // 7 + 1
-            
-            st.divider()
-            has_record = False
-            for week in range(1, 6):
-                week_data = month_df[month_df['week_num'] == week]
-                if not week_data.empty:
-                    has_record = True
-                    with st.expander(f"📌 {selected_month} - {week}주차 기록 보기", expanded=True):
-                        display_cols = ['날짜', '운동종목', '무게(kg)', '횟수', '메모']
-                        st.dataframe(week_data[display_cols], use_container_width=True, hide_index=True)
-            if not has_record:
-                st.info("선택하신 달에는 기록이 없습니다.")
-        else:
-            st.info("기록이 없습니다.")
+        # 최신순으로 정렬 (보기에 편하게)
+        # 날짜 포맷이 문자열이라 단순 역순으로 뒤집기
+        df_reversed = df.iloc[::-1].copy()
+
+        # 삭제를 위한 체크박스 컬럼 추가
+        df_reversed.insert(0, "삭제", False)
+
+        st.info("💡 삭제할 항목의 '삭제' 박스를 체크하고 아래 버튼을 누르세요. (내용을 더블클릭하면 수정도 가능합니다)")
+
+        # 데이터 에디터 (수정 및 체크박스 가능)
+        edited_df = st.data_editor(
+            df_reversed,
+            hide_index=True,
+            column_config={
+                "삭제": st.column_config.CheckboxColumn(
+                    "삭제?",
+                    help="체크하면 삭제됩니다.",
+                    default=False,
+                    width="small"
+                ),
+                "날짜": st.column_config.TextColumn("날짜", width="medium"),
+                "운동종목": st.column_config.TextColumn("종목", width="medium"),
+                "무게(kg)": st.column_config.NumberColumn("무게", width="small"),
+                "횟수": st.column_config.TextColumn("횟수", width="medium"),
+            },
+            use_container_width=True,
+            num_rows="dynamic"
+        )
+
+        # 삭제/수정 버튼
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button("🗑️ 선택한 기록 삭제하기", type="primary", use_container_width=True):
+                # 삭제 체크가 안 된 것만 남기기 (삭제=True인 것을 제거)
+                keep_mask = edited_df["삭제"] == False
+                final_df = edited_df[keep_mask]
+                
+                # '삭제' 컬럼 제거 후 저장
+                final_df = final_df.drop(columns=["삭제"])
+                
+                # 역순으로 보여줬던 것을 다시 원래 순서(과거->최신)로 뒤집어서 저장할 수도 있고,
+                # 그냥 최신순(현재 화면)대로 저장할 수도 있습니다.
+                # 여기서는 기록 순서를 유지하기 위해 다시 뒤집지 않고 현재 보이는(최신순)대로 저장하겠습니다.
+                
+                final_df.to_csv('my_workout_log.csv', index=False, encoding='utf-8-sig')
+                st.success("삭제 완료! 목록을 갱신합니다.")
+                st.rerun()
+
     else:
         st.info("아직 저장된 기록이 없습니다.")
