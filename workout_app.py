@@ -1,25 +1,82 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import os
-import pytz # 한국 시간 계산용
-import calendar # 달력 생성용
+import pytz
+import calendar
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 설정: 한국 시간(KST) 가져오기 함수 ---
+# --- 설정: 페이지 및 한국 시간 ---
+st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
+
 def get_kst_now():
     timezone = pytz.timezone('Asia/Seoul')
     return datetime.now(timezone)
 
-# 모바일 화면 설정
-st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
+# --- 구글 시트 연결 함수 (캐싱 적용) ---
+# 주의: secrets에 [gcp_service_account] 섹션이 있어야 함
+def get_google_sheet():
+    # Streamlit Secrets에서 인증 정보 가져오기
+    credentials_dict = st.secrets["gcp_service_account"]
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    client = gspread.authorize(creds)
+    
+    # 구글 시트 열기 (이름: 운동일지_DB)
+    # 만약 에러가 난다면 시트 이름을 확인하거나 공유가 잘 되었는지 확인해야 함
+    sheet = client.open("운동일지_DB").sheet1 
+    return sheet
 
-# --- 1. 세션 상태 초기화 ---
+# --- 데이터 불러오기 ---
+def load_data():
+    try:
+        sheet = get_google_sheet()
+        # 모든 기록 가져오기 (리스트 형태)
+        data = sheet.get_all_values()
+        
+        # 데이터가 헤더 포함 2줄 이상일 때만 DataFrame 생성
+        if len(data) > 1:
+            headers = data[0]
+            rows = data[1:]
+            df = pd.DataFrame(rows, columns=headers)
+            
+            # 행 번호(삭제용) 추가: 2행부터 시작 (1행은 헤더)
+            # 구글 시트는 1부터 시작, 헤더가 1행이므로 데이터는 2행부터
+            df['row_id'] = range(2, 2 + len(rows))
+            return df
+        else:
+            return pd.DataFrame(columns=["날짜", "요일", "시간", "몸무게", "운동종목", "무게(kg)", "횟수", "메모"])
+    except Exception as e:
+        st.error(f"구글 시트 연결 오류: {e}")
+        return pd.DataFrame()
+
+# --- 데이터 저장하기 ---
+def save_data(row_data):
+    try:
+        sheet = get_google_sheet()
+        sheet.append_row(row_data)
+        return True
+    except Exception as e:
+        st.error(f"저장 실패: {e}")
+        return False
+
+# --- 데이터 삭제하기 ---
+def delete_data(row_id):
+    try:
+        sheet = get_google_sheet()
+        sheet.delete_rows(row_id)
+        return True
+    except Exception as e:
+        st.error(f"삭제 실패: {e}")
+        return False
+
+# --- 세션 초기화 ---
 if 'exercise_index' not in st.session_state:
     st.session_state['exercise_index'] = 0
 if 'last_selected_date' not in st.session_state:
     st.session_state['last_selected_date'] = None
 
-st.subheader("💪 Lunahyeon's 운동일지")
+st.subheader("💪 Lunahyeon's 운동일지 (Cloud Ver.)")
 
 # 탭 구성
 tab1, tab2 = st.tabs(["✅ 기록 입력", "📅 캘린더 & 기록장"])
@@ -28,42 +85,32 @@ tab1, tab2 = st.tabs(["✅ 기록 입력", "📅 캘린더 & 기록장"])
 # 탭 1: 운동 기록 입력
 # ==========================================
 with tab1:
-    # 1. 상단에 날짜/요일을 보여줄 빈 공간(Placeholder) 생성
     header_placeholder = st.empty() 
-    
-    # 한국 시간으로 오늘 날짜 기본값 설정
     kst_now = get_kst_now()
     
     col1, col2 = st.columns(2)
     with col1:
-        # 날짜 입력 (라벨 숨김, 실제로는 안보임)
         date = st.date_input("날짜", kst_now, label_visibility="collapsed")
     with col2:
-        # 시간 입력
         current_time_str = kst_now.strftime("%H:%M")
         arrival_time = st.text_input("시간", value=current_time_str, label_visibility="collapsed")
     
-    # --- 요일 계산 및 상단 헤더 업데이트 ---
-    weekday = date.weekday() # 0:월, 1:화 ... 6:일
+    weekday = date.weekday()
     weekdays_kor = ["월", "화", "수", "목", "금", "토", "일"]
     today_yoil = weekdays_kor[weekday]
 
-    # ★ 날짜와 요일을 아주 잘 보이게 표시
     with header_placeholder:
         st.markdown(f"### 📅 {date.strftime('%Y-%m-%d')} <span style='color:#FF4B4B'>({today_yoil}요일)</span>", unsafe_allow_html=True)
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
-    # --- 요일별 루틴 설정 (자동 변경) ---
-    # 루틴 A (월, 수, 금, 주말)
+    # 루틴 설정
     routine_A = [
         "시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", 
         "러닝/걷기", "사이드 레터럴 레이즈", 
         "스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", 
         "기타"
     ]
-    
-    # 루틴 B (화, 목)
     routine_B = [
         "스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", 
         "러닝/걷기", 
@@ -71,42 +118,35 @@ with tab1:
         "기타"
     ]
 
-    # 화(1), 목(3)은 루틴 B, 나머지는 루틴 A
     if weekday in [1, 3]: 
         exercise_list = routine_B
         routine_name = "🔥 하체 / 전신 루틴 (화/목)"
-        style_color = "#FF4B4B" # 빨강
+        style_color = "#FF4B4B" 
     else:
         exercise_list = routine_A
         routine_name = "💪 상체 집중 루틴 (월/수/금)"
-        style_color = "#1E90FF" # 파랑
+        style_color = "#1E90FF" 
 
-    # 날짜가 바뀌면 운동 순서 0번(처음)으로 초기화
     if st.session_state['last_selected_date'] != date:
         st.session_state['exercise_index'] = 0
         st.session_state['last_selected_date'] = date
         st.rerun()
 
     st.markdown("---")
-    # 루틴 이름 표시 박스
     st.markdown(f"<div style='background-color: {style_color}; padding: 10px; border-radius: 5px; color: white; text-align: center; margin-bottom: 10px;'>{routine_name}</div>", unsafe_allow_html=True)
     
-    # ★ 핵심 로직: 세션 상태(index)를 통해 자동으로 선택값이 바뀜
-    # 하지만 사용자가 드롭박스를 눌러서 수동으로 바꿀 수도 있음
     current_index = st.session_state['exercise_index']
-    
-    # 인덱스가 리스트 범위를 넘어가면 0으로 초기화 (한 바퀴 돌았을 때)
     if current_index >= len(exercise_list):
         current_index = 0
         st.session_state['exercise_index'] = 0
 
     selected_exercise = st.selectbox(
-        "운동 종목 (저장하면 자동으로 넘어갑니다)", 
+        "운동 종목 (저장 시 자동 넘어감)", 
         exercise_list, 
         index=current_index
     )
 
-    # --- 영상 링크 매핑 ---
+    # 영상 링크 (생략 없이 유지)
     video_links = {
         "시티드 체스트 프레스": "https://youtube.com/shorts/AKzdQPAEGMQ?si=MVTrPeUXfvs2aJR9",
         "하이폴리": "https://youtube.com/shorts/5UPOD0he724?si=SahBffFfYiOmS-Vn",
@@ -120,114 +160,86 @@ with tab1:
     if selected_exercise in video_links:
         st.markdown(f"👉 **[{selected_exercise} 자세 영상 보기 (YouTube)]({video_links[selected_exercise]})**")
 
-    # --- 입력 폼 ---
     with st.form("workout_form", clear_on_submit=True):
-        
         sets_done = []
         save_reps_str = ""
         save_weight_val = 0
 
-        # [CASE 1] 소미핏
         if selected_exercise == "소미핏":
-
-            is_somifit_done = st.checkbox("✅ 오늘 소미핏 완료!", value=False)
+            is_somifit_done = st.checkbox("✅ 소미핏 완료!", value=False)
             if is_somifit_done:
                 sets_done = ["Completed"]
                 save_reps_str = "완료"
         
-        # [CASE 2] 러닝/걷기
         elif selected_exercise == "러닝/걷기":
-            st.markdown("🏃‍♀️ **유산소 설정**")
             c1, c2, c3 = st.columns(3)
-            with c1:
-                run_minutes = st.number_input("시간(분)", min_value=1, value=30, step=5)
-            with c2:
-                run_speed = st.number_input("속도", min_value=1.0, max_value=10.0, value=5.6, step=0.1, format="%.1f")
-            with c3:
-                run_incline = st.number_input("경사", min_value=0, max_value=9, value=0, step=1)
-            
+            with c1: run_minutes = st.number_input("시간(분)", 30, step=5)
+            with c2: run_speed = st.number_input("속도", 1.0, 10.0, 5.6, 0.1, "%.1f")
+            with c3: run_incline = st.number_input("경사", 0, 9, 0, 1)
             sets_done = ["Completed"]
             save_weight_val = run_speed
             save_reps_str = f"{run_minutes}분 (경사 {run_incline})"
 
-        # [CASE 3] 일반 근력 운동
         else:
             c1, c2 = st.columns([1, 1])
-            with c1:
-                exercise_weight = st.number_input("무게 (kg)", min_value=0, step=5, value=10)
-            with c2:
-                base_reps = st.number_input("목표 횟수", value=15, step=1)
-
-            st.write("👇 **세트 수행 체크**")
+            with c1: exercise_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
+            with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
-            # 가로로 체크박스 배치
             check_cols = st.columns(4)
             for i in range(4):
                 with check_cols[i]:
                     if st.checkbox(f"{base_reps}회", key=f"set_{i}"):
                         sets_done.append(str(base_reps))
-            
             save_weight_val = exercise_weight
             save_reps_str = " ".join(sets_done)
 
         st.markdown("---")
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
-        
-        # 저장 버튼
-        submit_btn = st.form_submit_button("💾 저장 및 다음 운동으로 (Next)", use_container_width=True)
+        submit_btn = st.form_submit_button("💾 구글 시트에 저장 & 다음 (Next)", use_container_width=True)
 
     if submit_btn:
         if not sets_done:
             st.warning("⚠️ 수행한 내용을 체크해주세요!")
         else:
-            # 1. 요일 기록 (YYYY-MM-DD (월) 형식)
-            date_str = f"{date.strftime('%Y-%m-%d')} ({today_yoil})"
+            date_str = date.strftime('%Y-%m-%d')
             
-            new_data = {
-                "날짜": [date_str],
-                "시간": [arrival_time],
-                "몸무게": [weight],
-                "운동종목": [selected_exercise],
-                "무게(kg)": [save_weight_val], 
-                "횟수": [save_reps_str],       
-                "메모": [memo]
-            }
+            # 구글 시트에 보낼 데이터 리스트 (순서 중요: 날짜, 요일, 시간, 몸무게, 종목, 무게, 횟수, 메모)
+            row_data = [
+                date_str,
+                today_yoil,
+                arrival_time,
+                weight,
+                selected_exercise,
+                save_weight_val,
+                save_reps_str,
+                memo
+            ]
             
-            df = pd.DataFrame(new_data)
-            file_name = 'my_workout_log.csv'
-            
-            # 파일 저장 로직
-            if not os.path.exists(file_name):
-                df.to_csv(file_name, index=False, encoding='utf-8-sig')
-            else:
-                df.to_csv(file_name, mode='a', header=False, index=False, encoding='utf-8-sig')
-            
-            # ★ 자동 순서 넘기기 로직 (핵심) ★
-            # 현재 선택된 운동이 리스트의 몇 번째인지 찾습니다.
-            # (만약 사용자가 드롭박스를 수동으로 바꿨을 수도 있으니까요)
-            try:
-                now_index = exercise_list.index(selected_exercise)
-            except ValueError:
-                now_index = 0
-            
-            # 다음 인덱스 계산
-            next_index = now_index + 1
-            st.session_state['exercise_index'] = next_index
-            
-            # 성공 메시지와 함께 페이지 새로고침(Rerun) -> 그러면 다음 운동이 뜸
-            st.success(f"[{selected_exercise}] 저장 완료! 다음 운동으로 넘어갑니다.")
-            st.rerun()
+            # 저장 함수 호출
+            if save_data(row_data):
+                try:
+                    now_index = exercise_list.index(selected_exercise)
+                except:
+                    now_index = 0
+                st.session_state['exercise_index'] = now_index + 1
+                
+                st.success(f"[{selected_exercise}] 구글 시트에 안전하게 저장되었습니다!")
+                st.rerun()
 
 # ==========================================
-# 탭 2: 캘린더 & 기록장 (기존 유지)
+# 탭 2: 캘린더 & 기록장 (구글 시트 연동)
 # ==========================================
 with tab2:
-    st.subheader("📊 월별 운동 캘린더")
+    st.subheader("📊 구글 시트 데이터 로딩 중...")
     
-    if os.path.exists('my_workout_log.csv'):
-        df = pd.read_csv('my_workout_log.csv')
+    # 데이터 불러오기
+    df = load_data()
+    
+    if not df.empty:
+        st.success("데이터 로드 완료!")
         
-        df['dt_obj'] = pd.to_datetime(df['날짜'].str.slice(0, 10)) 
+        # 날짜 처리
+        df['dt_obj'] = pd.to_datetime(df['날짜'])
         df['day'] = df['dt_obj'].dt.day
         
         now = get_kst_now()
@@ -237,8 +249,8 @@ with tab2:
         mask = (df['dt_obj'].dt.year == selected_year) & (df['dt_obj'].dt.month == selected_month)
         workout_days = df[mask]['day'].unique()
         
+        # 달력 그리기
         cal = calendar.monthcalendar(selected_year, selected_month)
-        
         table_html = """
         <style>
             .calendar-table {width: 100%; text-align: center; border-collapse: collapse;}
@@ -261,28 +273,25 @@ with tab2:
             </thead>
             <tbody>
         """
-        
         for week in cal:
             table_html += "<tr>"
             for day in week:
                 if day == 0:
-                    table_html += "<td></td>" 
+                    table_html += "<td></td>"
                 else:
                     sticker = ""
                     if day in workout_days:
-                        sticker = "<span class='workout-sticker'>O</span>" 
-                    
+                        sticker = "<span class='workout-sticker'>O</span>"
                     table_html += f"<td><span class='date-num'>{day}</span>{sticker}</td>"
             table_html += "</tr>"
-        
         table_html += "</tbody></table>"
         st.markdown(table_html, unsafe_allow_html=True)
         
         st.divider()
-        
-        st.subheader(f"📝 {selected_month}월 상세 기록")
+        st.subheader(f"📝 {selected_month}월 상세 기록 (구글 시트)")
         
         month_df = df[mask].copy()
+        # 시간순 정렬 (역순)
         month_df = month_df.sort_values(by=['dt_obj', '시간'], ascending=[False, True])
         
         unique_dates = month_df['날짜'].unique()
@@ -291,23 +300,33 @@ with tab2:
             for d in unique_dates:
                 day_data = month_df[month_df['날짜'] == d]
                 
-                with st.expander(f"📌 {d} (총 {len(day_data)}개 종목 수행)", expanded=False):
+                with st.expander(f"📌 {d} (총 {len(day_data)}개)", expanded=False):
+                    # 보여줄 컬럼
                     display_cols = ['시간', '운동종목', '무게(kg)', '횟수', '메모']
                     st.dataframe(day_data[display_cols], use_container_width=True, hide_index=True)
                     
-                    if st.checkbox(f"🗑️ {d} 기록 삭제 모드", key=f"del_mode_{d}"):
-                        to_delete = st.multiselect("삭제할 운동을 선택하세요", day_data['운동종목'].unique(), key=f"del_sel_{d}")
-                        if st.button("선택한 운동 삭제", key=f"del_btn_{d}"):
-                            rows_to_drop = df[
-                                (df['날짜'] == d) & 
-                                (df['운동종목'].isin(to_delete))
-                            ].index
-                            df.drop(rows_to_drop, inplace=True)
-                            df.to_csv('my_workout_log.csv', index=False, encoding='utf-8-sig')
-                            st.success("삭제되었습니다. 새로고침 됩니다.")
+                    # 삭제 기능
+                    if st.checkbox(f"🗑️ {d} 기록 삭제하기", key=f"del_mode_{d}"):
+                        st.warning("주의: 선택 후 삭제 버튼을 누르면 구글 시트에서 즉시 삭제됩니다.")
+                        
+                        # 삭제할 항목 선택 (row_id를 key로 사용)
+                        # 보기 편하게 "종목 - 시간" 형태로 표시
+                        options = day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1).tolist()
+                        selected_opts = st.multiselect("삭제할 항목 선택", options, key=f"del_sel_{d}")
+                        
+                        if st.button("선택 항목 영구 삭제", key=f"del_btn_{d}"):
+                            # 선택된 항목의 실제 row_id 찾기
+                            for opt in selected_opts:
+                                target_row = day_data[day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1) == opt]
+                                if not target_row.empty:
+                                    real_row_id = target_row.iloc[0]['row_id']
+                                    delete_data(real_row_id)
+                            
+                            st.success("삭제 완료! 잠시 후 새로고침 됩니다.")
+                            import time
+                            time.sleep(1)
                             st.rerun()
         else:
-            st.info(f"{selected_month}월에는 아직 기록이 없습니다.")
-
+            st.info("이 달에는 기록이 없습니다.")
     else:
-        st.info("아직 저장된 데이터가 없습니다. 첫 운동을 기록해보세요!")
+        st.info("구글 시트에 저장된 데이터가 없습니다. 첫 기록을 남겨보세요!")
