@@ -10,11 +10,22 @@ import time
 # --- 설정: 페이지 및 한국 시간 ---
 st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 
+# ★ [핵심 1] 모바일에서도 강제로 가로 2칸 유지시키는 스타일 코드 (CSS)
+st.markdown("""
+    <style>
+    [data-testid="column"] {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 50% !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 def get_kst_now():
     timezone = pytz.timezone('Asia/Seoul')
     return datetime.now(timezone)
 
-# --- 구글 시트 연결 함수 ---
+# --- 구글 시트 연결 ---
 def get_google_sheet():
     credentials_dict = st.secrets["gcp_service_account"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -23,24 +34,37 @@ def get_google_sheet():
     sheet = client.open("운동일지_DB").sheet1 
     return sheet
 
-# --- 데이터 불러오기 ---
+# --- 데이터 불러오기 (안전장치 강화) ---
 def load_data():
+    # 기본 컬럼 정의 (에러 방지용)
+    default_cols = ["날짜", "요일", "시간", "몸무게", "운동종목", "무게(kg)", "횟수", "메모"]
+    
     try:
         sheet = get_google_sheet()
         data = sheet.get_all_values()
         
+        # 데이터가 있고 헤더(1줄) 이상일 때
         if len(data) > 1:
             headers = data[0]
             rows = data[1:]
             df = pd.DataFrame(rows, columns=headers)
+            
+            # ★ [핵심 2] '날짜' 컬럼이 없으면 강제로 생성 (KeyError 방지)
+            for col in default_cols:
+                if col not in df.columns:
+                    df[col] = ""
+            
             df['row_id'] = range(2, 2 + len(rows))
             return df
         else:
-            return pd.DataFrame(columns=["날짜", "요일", "시간", "몸무게", "운동종목", "무게(kg)", "횟수", "메모"])
+            # 데이터가 없으면 빈 프레임 반환
+            return pd.DataFrame(columns=default_cols)
+            
     except Exception as e:
-        return pd.DataFrame()
+        # 연결 에러나면 빈 프레임 반환
+        return pd.DataFrame(columns=default_cols)
 
-# --- 데이터 저장하기 ---
+# --- 데이터 저장 ---
 def save_data(row_data):
     try:
         sheet = get_google_sheet()
@@ -50,7 +74,7 @@ def save_data(row_data):
         st.error(f"저장 실패: {e}")
         return False
 
-# --- 데이터 삭제하기 ---
+# --- 데이터 삭제 ---
 def delete_data(row_id):
     try:
         sheet = get_google_sheet()
@@ -66,7 +90,7 @@ if 'exercise_index' not in st.session_state:
 if 'last_selected_date' not in st.session_state:
     st.session_state['last_selected_date'] = None
 
-st.subheader("💪 Lunahyeon's 운동일지 (Cloud Ver.)")
+st.subheader("💪 Lunahyeon's 운동일지")
 
 tab1, tab2 = st.tabs(["✅ 기록 입력", "📅 캘린더 & 기록장"])
 
@@ -175,15 +199,13 @@ with tab1:
             
             st.write("👇 **세트 수행 체크**")
             
-            # ★ 수정됨: 모바일 배려형 2x2 격자 배치 (가로 2개씩) ★
-            # 1행
+            # 2x2 격자 배치
             r1_c1, r1_c2 = st.columns(2)
             with r1_c1:
                 if st.checkbox(f"1세트 ({base_reps}회)", key="set_0"): sets_done.append(str(base_reps))
             with r1_c2:
                 if st.checkbox(f"2세트 ({base_reps}회)", key="set_1"): sets_done.append(str(base_reps))
             
-            # 2행
             r2_c1, r2_c2 = st.columns(2)
             with r2_c1:
                 if st.checkbox(f"3세트 ({base_reps}회)", key="set_2"): sets_done.append(str(base_reps))
@@ -223,87 +245,91 @@ with tab2:
     st.subheader("📊 구글 시트 데이터 로딩 중...")
     df = load_data()
     
-    if not df.empty:
-        st.success("데이터 로드 완료!")
-        
-        # ★ 빨간 에러 해결 코드 (빈 날짜 자동 제거)
+    # 데이터가 비어있어도 컬럼은 존재하므로 안전함
+    if not df.empty and '날짜' in df.columns:
+        # 날짜 컬럼 에러 처리
         df['dt_obj'] = pd.to_datetime(df['날짜'], errors='coerce')
         df = df.dropna(subset=['dt_obj'])
-        df['day'] = df['dt_obj'].dt.day
         
-        now = get_kst_now()
-        selected_year = st.selectbox("연도", [now.year, now.year-1], index=0)
-        selected_month = st.selectbox("월", range(1, 13), index=now.month-1)
-        
-        mask = (df['dt_obj'].dt.year == selected_year) & (df['dt_obj'].dt.month == selected_month)
-        workout_days = df[mask]['day'].unique()
-        
-        cal = calendar.monthcalendar(selected_year, selected_month)
-        table_html = """
-        <style>
-            .calendar-table {width: 100%; text-align: center; border-collapse: collapse;}
-            .calendar-table th {background-color: #f0f2f6; padding: 10px; border: 1px solid #ddd;}
-            .calendar-table td {height: 80px; vertical-align: top; border: 1px solid #ddd; width: 14%;}
-            .workout-sticker {
-                display: block; margin-top: 5px; 
-                background-color: #FF4B4B; color: white; 
-                border-radius: 50%; width: 24px; height: 24px; 
-                line-height: 24px; margin-left: auto; margin-right: auto;
-                font-size: 12px;
-            }
-            .date-num {font-weight: bold; display: block; margin-bottom: 5px;}
-        </style>
-        <table class="calendar-table">
-            <thead>
-                <tr>
-                    <th style="color:red">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style="color:blue">토</th>
-                </tr>
-            </thead>
-            <tbody>
-        """
-        for week in cal:
-            table_html += "<tr>"
-            for day in week:
-                if day == 0:
-                    table_html += "<td></td>"
-                else:
-                    sticker = ""
-                    if day in workout_days:
-                        sticker = "<span class='workout-sticker'>O</span>"
-                    table_html += f"<td><span class='date-num'>{day}</span>{sticker}</td>"
-            table_html += "</tr>"
-        table_html += "</tbody></table>"
-        st.markdown(table_html, unsafe_allow_html=True)
-        
-        st.divider()
-        st.subheader(f"📝 {selected_month}월 상세 기록 (구글 시트)")
-        
-        month_df = df[mask].copy()
-        month_df = month_df.sort_values(by=['dt_obj', '시간'], ascending=[False, True])
-        unique_dates = month_df['날짜'].unique()
-        
-        if len(unique_dates) > 0:
-            for d in unique_dates:
-                day_data = month_df[month_df['날짜'] == d]
-                with st.expander(f"📌 {d} (총 {len(day_data)}개)", expanded=False):
-                    display_cols = ['시간', '운동종목', '무게(kg)', '횟수', '메모']
-                    st.dataframe(day_data[display_cols], use_container_width=True, hide_index=True)
-                    
-                    if st.checkbox(f"🗑️ {d} 기록 삭제하기", key=f"del_mode_{d}"):
-                        st.warning("주의: 선택 후 삭제 버튼을 누르면 구글 시트에서 즉시 삭제됩니다.")
-                        options = day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1).tolist()
-                        selected_opts = st.multiselect("삭제할 항목 선택", options, key=f"del_sel_{d}")
+        if not df.empty:
+            st.success("데이터 로드 완료!")
+            df['day'] = df['dt_obj'].dt.day
+            
+            now = get_kst_now()
+            selected_year = st.selectbox("연도", [now.year, now.year-1], index=0)
+            selected_month = st.selectbox("월", range(1, 13), index=now.month-1)
+            
+            mask = (df['dt_obj'].dt.year == selected_year) & (df['dt_obj'].dt.month == selected_month)
+            workout_days = df[mask]['day'].unique()
+            
+            cal = calendar.monthcalendar(selected_year, selected_month)
+            table_html = """
+            <style>
+                .calendar-table {width: 100%; text-align: center; border-collapse: collapse;}
+                .calendar-table th {background-color: #f0f2f6; padding: 10px; border: 1px solid #ddd;}
+                .calendar-table td {height: 80px; vertical-align: top; border: 1px solid #ddd; width: 14%;}
+                .workout-sticker {
+                    display: block; margin-top: 5px; 
+                    background-color: #FF4B4B; color: white; 
+                    border-radius: 50%; width: 24px; height: 24px; 
+                    line-height: 24px; margin-left: auto; margin-right: auto;
+                    font-size: 12px;
+                }
+                .date-num {font-weight: bold; display: block; margin-bottom: 5px;}
+            </style>
+            <table class="calendar-table">
+                <thead>
+                    <tr>
+                        <th style="color:red">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style="color:blue">토</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            for week in cal:
+                table_html += "<tr>"
+                for day in week:
+                    if day == 0:
+                        table_html += "<td></td>"
+                    else:
+                        sticker = ""
+                        if day in workout_days:
+                            sticker = "<span class='workout-sticker'>O</span>"
+                        table_html += f"<td><span class='date-num'>{day}</span>{sticker}</td>"
+                table_html += "</tr>"
+            table_html += "</tbody></table>"
+            st.markdown(table_html, unsafe_allow_html=True)
+            
+            st.divider()
+            st.subheader(f"📝 {selected_month}월 상세 기록")
+            
+            month_df = df[mask].copy()
+            month_df = month_df.sort_values(by=['dt_obj', '시간'], ascending=[False, True])
+            unique_dates = month_df['날짜'].unique()
+            
+            if len(unique_dates) > 0:
+                for d in unique_dates:
+                    day_data = month_df[month_df['날짜'] == d]
+                    with st.expander(f"📌 {d} (총 {len(day_data)}개)", expanded=False):
+                        display_cols = ['시간', '운동종목', '무게(kg)', '횟수', '메모']
+                        st.dataframe(day_data[display_cols], use_container_width=True, hide_index=True)
                         
-                        if st.button("선택 항목 영구 삭제", key=f"del_btn_{d}"):
-                            for opt in selected_opts:
-                                target_row = day_data[day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1) == opt]
-                                if not target_row.empty:
-                                    real_row_id = target_row.iloc[0]['row_id']
-                                    delete_data(real_row_id)
-                            st.success("삭제 완료! 잠시 후 새로고침 됩니다.")
-                            time.sleep(1)
-                            st.rerun()
+                        if st.checkbox(f"🗑️ {d} 기록 삭제하기", key=f"del_mode_{d}"):
+                            st.warning("주의: 선택 후 삭제 버튼을 누르면 구글 시트에서 즉시 삭제됩니다.")
+                            options = day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1).tolist()
+                            selected_opts = st.multiselect("삭제할 항목 선택", options, key=f"del_sel_{d}")
+                            
+                            if st.button("선택 항목 영구 삭제", key=f"del_btn_{d}"):
+                                for opt in selected_opts:
+                                    target_row = day_data[day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1) == opt]
+                                    if not target_row.empty:
+                                        real_row_id = target_row.iloc[0]['row_id']
+                                        delete_data(real_row_id)
+                                st.success("삭제 완료! 잠시 후 새로고침 됩니다.")
+                                time.sleep(1)
+                                st.rerun()
+            else:
+                st.info("이 달에는 기록이 없습니다.")
         else:
-            st.info("이 달에는 기록이 없습니다.")
+            st.info("데이터는 있지만 유효한 날짜 형식이 없습니다.")
     else:
-        st.info("구글 시트에 저장된 데이터가 없습니다. 첫 기록을 남겨보세요!")
+        st.info("아직 기록이 없거나 구글 시트가 비어있습니다. 첫 운동을 기록해보세요!")
