@@ -16,11 +16,26 @@ KST = pytz.timezone('Asia/Seoul')
 def get_kst_now():
     return datetime.now(KST)
 
-# [스타일] 버튼 배치 및 모바일 최적화
+# ★ [스타일 수정] 버튼 간격 및 패딩 확대 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-    div[data-testid="stPills"] { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+    
+    /* 버튼형 체크박스(Pills) 사이의 간격을 넓힙니다 */
+    div[data-testid="stPills"] { 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: 15px !important; /* 버튼 사이 간격 확대 */
+        justify-content: center; 
+    }
+    
+    /* 각 알약 버튼의 안쪽 여백을 늘려 터치 영역을 확보합니다 */
+    div[data-testid="stPills"] button {
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        min-width: 60px; /* 최소 너비 지정으로 균형 유지 */
+    }
+
     [data-testid="column"] { width: 50% !important; flex: 1 1 50% !important; min-width: 50% !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -74,16 +89,13 @@ tab1, tab2 = st.tabs(["✅ 기록 입력", "📅 캘린더 & 기록장"])
 with tab1:
     kst_now = get_kst_now()
     
-    # 1. 날짜 및 시간 입력 (한국 시간 기준)
     col1, col2 = st.columns(2)
     with col1:
-        # date_input의 기본값을 한국 현재 날짜로 설정
         date = st.date_input("날짜", kst_now.date(), label_visibility="collapsed")
     with col2:
         current_time_str = kst_now.strftime("%H:%M")
         arrival_time = st.text_input("시간", value=current_time_str, label_visibility="collapsed")
     
-    # 2. 요일 계산 (입력된 날짜 기준)
     weekdays_kor = ["월", "화", "수", "목", "금", "토", "일"]
     today_yoil = weekdays_kor[date.weekday()]
 
@@ -91,11 +103,10 @@ with tab1:
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
-    # 루틴 설정 (화/목 루틴 vs 월/수/금 루틴)
     routine_A = ["시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", "러닝/걷기", "사이드 레터럴 레이즈", "스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", "기타"]
     routine_B = ["스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", "러닝/걷기", "시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", "사이드 레터럴 레이즈", "기타"]
 
-    if date.weekday() in [1, 3]: # 화(1), 목(3)
+    if date.weekday() in [1, 3]: 
         exercise_list = routine_B
         routine_name = "🔥 하체 / 전신 루틴 (화/목)"
         style_color = "#FF4B4B" 
@@ -104,7 +115,6 @@ with tab1:
         routine_name = "💪 상체 집중 루틴 (월/수/금)"
         style_color = "#1E90FF" 
 
-    # 날짜가 바뀌면 운동 순서 리셋
     if st.session_state['last_selected_date'] != date:
         st.session_state['exercise_index'] = 0
         st.session_state['last_selected_date'] = date
@@ -124,7 +134,6 @@ with tab1:
         save_reps_str = ""
         save_weight_val = 0
 
-        # 운동별 입력창 (소미핏/러닝/일반 등 - 기존 로직 유지)
         if selected_exercise == "소미핏":
             is_somifit_done = st.checkbox("✅ 소미핏 완료!", value=False)
             if is_somifit_done:
@@ -139,6 +148,8 @@ with tab1:
             c1, c2 = st.columns(2)
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
+            
+            # 간격을 넓힌 15 15 15 15 버튼
             pills_opts = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
             selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
             if selected_pills:
@@ -147,13 +158,10 @@ with tab1:
 
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
         
-        # 버튼 분리
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            # 저장 안 하고 다음 종목으로만 이동
             next_btn = st.form_submit_button("⏭️ 다음 운동으로", use_container_width=True)
         with btn_col2:
-            # 현재 운동 저장 (기록 완료용)
             save_btn = st.form_submit_button("💾 시트에 저장", type="primary", use_container_width=True)
 
     if save_btn:
@@ -169,4 +177,4 @@ with tab1:
         st.session_state['exercise_index'] = (current_index + 1) % len(exercise_list)
         st.rerun()
 
-# [탭 2: 캘린더 로직은 이전과 동일하므로 생략하거나 기존 코드 유지]
+# 탭 2 (달력 부분)는 기존 로직을 그대로 유지합니다.
