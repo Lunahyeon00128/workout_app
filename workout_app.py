@@ -10,14 +10,20 @@ import time
 # --- 설정: 페이지 및 한국 시간 ---
 st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 
-# ★ [CSS 수정] 모바일에서 2개 컬럼이 세로로 쌓이지 않고 '무조건 가로'로 유지되게 함
+# ★ [핵심 스타일] 폰트 크기 조절 및 여백 최소화
 st.markdown("""
     <style>
-    /* 좁은 화면에서도 컬럼이 위아래로 쌓이지 않고 50:50으로 유지되게 강제 설정 */
-    [data-testid="column"] {
-        width: 50% !important;
-        flex: 1 1 50% !important;
-        min-width: 50% !important;
+    /* 상단 여백 줄이기 */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    /* 버튼형 체크박스(Pills) 스타일 */
+    div[data-testid="stPills"] {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center; /* 가운데 정렬 */
     }
     </style>
     """, unsafe_allow_html=True)
@@ -172,6 +178,7 @@ with tab1:
         save_weight_val = 0
 
         if selected_exercise == "소미핏":
+            # 소미핏은 그대로 체크박스 유지 (단순함)
             is_somifit_done = st.checkbox("✅ 소미핏 완료!", value=False)
             if is_somifit_done:
                 sets_done = ["Completed"]
@@ -191,22 +198,24 @@ with tab1:
             with c1: exercise_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
-            st.write("👇 **세트 수행 체크**")
+            st.write("👇 **세트 수행 (터치하여 선택)**")
             
-            # ★ 수정됨: 2x2 격자 배치 (완벽한 반응형) ★
-            # 1행 (1, 2세트)
-            row1_1, row1_2 = st.columns(2)
-            with row1_1:
-                if st.checkbox(f"{base_reps}", key="s1"): sets_done.append(str(base_reps))
-            with row1_2:
-                if st.checkbox(f"{base_reps}", key="s2"): sets_done.append(str(base_reps))
-                
-            # 2행 (3, 4세트)
-            row2_1, row2_2 = st.columns(2)
-            with row2_1:
-                if st.checkbox(f"{base_reps}", key="s3"): sets_done.append(str(base_reps))
-            with row2_2:
-                if st.checkbox(f"{base_reps}", key="s4"): sets_done.append(str(base_reps))
+            # ★ 핵심 변경: st.pills 사용 (자동 가로 정렬 & 모바일 최적화) ★
+            # [15] [15] [15] [15] 형태로 예쁘게 나옵니다.
+            pills_options = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
+            # (팁: 글자가 같으면 선택이 안되어서 뒤에 공백을 넣어 다르게 인식시킴, 화면엔 똑같이 보임)
+            
+            selected_pills = st.pills(
+                "세트 수 체크",
+                options=pills_options,
+                selection_mode="multi",
+                label_visibility="collapsed"
+            )
+            
+            # 선택된 개수만큼 sets_done에 추가
+            if selected_pills:
+                for _ in selected_pills:
+                    sets_done.append(str(base_reps))
 
             save_weight_val = exercise_weight
             save_reps_str = " ".join(sets_done)
