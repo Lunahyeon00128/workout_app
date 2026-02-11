@@ -10,20 +10,24 @@ import time
 # --- 설정: 페이지 및 한국 시간 ---
 st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 
-# ★ [핵심 스타일] 폰트 크기 조절 및 여백 최소화
+# ★ [스타일] 버튼 분리 및 모바일 최적화
 st.markdown("""
     <style>
-    /* 상단 여백 줄이기 */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
     }
-    /* 버튼형 체크박스(Pills) 스타일 */
     div[data-testid="stPills"] {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
-        justify-content: center; /* 가운데 정렬 */
+        justify-content: center;
+    }
+    /* 버튼 2개를 가로로 꽉 차게 배치 */
+    [data-testid="column"] {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 50% !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -47,21 +51,17 @@ def load_data():
     try:
         sheet = get_google_sheet()
         data = sheet.get_all_values()
-        
         if len(data) > 1:
             headers = data[0]
             rows = data[1:]
             df = pd.DataFrame(rows, columns=headers)
-            
             for col in default_cols:
-                if col not in df.columns:
-                    df[col] = ""
-            
+                if col not in df.columns: df[col] = ""
             df['row_id'] = range(2, 2 + len(rows))
             return df
         else:
             return pd.DataFrame(columns=default_cols)
-    except Exception as e:
+    except:
         return pd.DataFrame(columns=default_cols)
 
 # --- 데이터 저장 ---
@@ -118,18 +118,8 @@ with tab1:
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
     # 루틴 설정
-    routine_A = [
-        "시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", 
-        "러닝/걷기", "사이드 레터럴 레이즈", 
-        "스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", 
-        "기타"
-    ]
-    routine_B = [
-        "스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", 
-        "러닝/걷기", 
-        "시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", "사이드 레터럴 레이즈", 
-        "기타"
-    ]
+    routine_A = ["시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", "러닝/걷기", "사이드 레터럴 레이즈", "스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", "기타"]
+    routine_B = ["스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", "러닝/걷기", "시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", "사이드 레터럴 레이즈", "기타"]
 
     if weekday in [1, 3]: 
         exercise_list = routine_B
@@ -153,11 +143,7 @@ with tab1:
         current_index = 0
         st.session_state['exercise_index'] = 0
 
-    selected_exercise = st.selectbox(
-        "운동 종목 (저장 시 자동 넘어감)", 
-        exercise_list, 
-        index=current_index
-    )
+    selected_exercise = st.selectbox("운동 종목", exercise_list, index=current_index)
 
     video_links = {
         "시티드 체스트 프레스": "https://youtube.com/shorts/AKzdQPAEGMQ?si=MVTrPeUXfvs2aJR9",
@@ -178,7 +164,6 @@ with tab1:
         save_weight_val = 0
 
         if selected_exercise == "소미핏":
-            # 소미핏은 그대로 체크박스 유지 (단순함)
             is_somifit_done = st.checkbox("✅ 소미핏 완료!", value=False)
             if is_somifit_done:
                 sets_done = ["Completed"]
@@ -200,48 +185,47 @@ with tab1:
             
             st.write("👇 **세트 수행 (터치하여 선택)**")
             
-            # ★ 핵심 변경: st.pills 사용 (자동 가로 정렬 & 모바일 최적화) ★
-            # [15] [15] [15] [15] 형태로 예쁘게 나옵니다.
+            # [15] [15] [15] [15] 버튼형 체크박스
             pills_options = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
-            # (팁: 글자가 같으면 선택이 안되어서 뒤에 공백을 넣어 다르게 인식시킴, 화면엔 똑같이 보임)
+            selected_pills = st.pills("세트 수 체크", options=pills_options, selection_mode="multi", label_visibility="collapsed")
             
-            selected_pills = st.pills(
-                "세트 수 체크",
-                options=pills_options,
-                selection_mode="multi",
-                label_visibility="collapsed"
-            )
-            
-            # 선택된 개수만큼 sets_done에 추가
             if selected_pills:
-                for _ in selected_pills:
-                    sets_done.append(str(base_reps))
-
+                for _ in selected_pills: sets_done.append(str(base_reps))
+            
             save_weight_val = exercise_weight
             save_reps_str = " ".join(sets_done)
 
         st.markdown("---")
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
-        submit_btn = st.form_submit_button("💾 구글 시트에 저장 & 다음 (Next)", use_container_width=True)
+        
+        # ★★★ 핵심: 버튼 완벽 분리 ★★★
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            # 다음 버튼: 저장 안 하고 넘어감
+            next_btn = st.form_submit_button("⏭️ 다음 운동 (Next)", use_container_width=True)
+        with btn_col2:
+            # 저장 버튼: 저장하고 화면 유지 (끝낼 때 유용)
+            save_btn = st.form_submit_button("💾 저장하기 (Save)", type="primary", use_container_width=True)
 
-    if submit_btn:
+    # 1. 저장 버튼 로직 (화면 안 넘어감)
+    if save_btn:
         if not sets_done:
             st.warning("⚠️ 수행한 내용을 체크해주세요!")
         else:
             date_str = date.strftime('%Y-%m-%d')
-            row_data = [
-                date_str, today_yoil, arrival_time, weight,
-                selected_exercise, save_weight_val, save_reps_str, memo
-            ]
+            row_data = [date_str, today_yoil, arrival_time, weight, selected_exercise, save_weight_val, save_reps_str, memo]
             
             if save_data(row_data):
-                try: now_index = exercise_list.index(selected_exercise)
-                except: now_index = 0
-                st.session_state['exercise_index'] = now_index + 1
-                
-                st.success(f"[{selected_exercise}] 저장 완료! 다음 운동으로 넘어갑니다.")
-                time.sleep(1)
-                st.rerun()
+                st.success(f"[{selected_exercise}] 저장되었습니다! (화면 유지 중)")
+                # 여기서 rerun()을 하지 않으므로 화면이 넘어가지 않습니다.
+
+    # 2. 다음 버튼 로직 (저장 안 하고 넘어감)
+    if next_btn:
+        # 인덱스 증가 -> 화면 갱신
+        try: now_index = exercise_list.index(selected_exercise)
+        except: now_index = 0
+        st.session_state['exercise_index'] = now_index + 1
+        st.rerun()
 
 # ==========================================
 # 탭 2: 캘린더 & 기록장
@@ -271,32 +255,17 @@ with tab2:
                 .calendar-table {width: 100%; text-align: center; border-collapse: collapse;}
                 .calendar-table th {background-color: #f0f2f6; padding: 10px; border: 1px solid #ddd;}
                 .calendar-table td {height: 80px; vertical-align: top; border: 1px solid #ddd; width: 14%;}
-                .workout-sticker {
-                    display: block; margin-top: 5px; 
-                    background-color: #FF4B4B; color: white; 
-                    border-radius: 50%; width: 24px; height: 24px; 
-                    line-height: 24px; margin-left: auto; margin-right: auto;
-                    font-size: 12px;
-                }
+                .workout-sticker {display: block; margin: 5px auto; background-color: #FF4B4B; color: white; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; font-size: 12px;}
                 .date-num {font-weight: bold; display: block; margin-bottom: 5px;}
             </style>
-            <table class="calendar-table">
-                <thead>
-                    <tr>
-                        <th style="color:red">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style="color:blue">토</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <table class="calendar-table"><thead><tr><th style="color:red">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style="color:blue">토</th></tr></thead><tbody>
             """
             for week in cal:
                 table_html += "<tr>"
                 for day in week:
-                    if day == 0:
-                        table_html += "<td></td>"
+                    if day == 0: table_html += "<td></td>"
                     else:
-                        sticker = ""
-                        if day in workout_days:
-                            sticker = "<span class='workout-sticker'>O</span>"
+                        sticker = "<span class='workout-sticker'>O</span>" if day in workout_days else ""
                         table_html += f"<td><span class='date-num'>{day}</span>{sticker}</td>"
                 table_html += "</tr>"
             table_html += "</tbody></table>"
@@ -315,24 +284,14 @@ with tab2:
                     with st.expander(f"📌 {d} (총 {len(day_data)}개)", expanded=False):
                         display_cols = ['시간', '운동종목', '무게(kg)', '횟수', '메모']
                         st.dataframe(day_data[display_cols], use_container_width=True, hide_index=True)
-                        
                         if st.checkbox(f"🗑️ {d} 기록 삭제하기", key=f"del_mode_{d}"):
-                            st.warning("주의: 선택 후 삭제 버튼을 누르면 구글 시트에서 즉시 삭제됩니다.")
+                            st.warning("주의: 삭제 시 구글 시트에서 즉시 지워집니다.")
                             options = day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1).tolist()
-                            selected_opts = st.multiselect("삭제할 항목 선택", options, key=f"del_sel_{d}")
-                            
-                            if st.button("선택 항목 영구 삭제", key=f"del_btn_{d}"):
+                            selected_opts = st.multiselect("삭제할 항목", options, key=f"del_sel_{d}")
+                            if st.button("영구 삭제", key=f"del_btn_{d}"):
                                 for opt in selected_opts:
                                     target_row = day_data[day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1) == opt]
-                                    if not target_row.empty:
-                                        real_row_id = target_row.iloc[0]['row_id']
-                                        delete_data(real_row_id)
-                                st.success("삭제 완료! 잠시 후 새로고침 됩니다.")
-                                time.sleep(1)
-                                st.rerun()
-            else:
-                st.info("이 달에는 기록이 없습니다.")
-        else:
-            st.info("데이터는 있지만 유효한 날짜 형식이 없습니다.")
-    else:
-        st.info("아직 기록이 없거나 구글 시트가 비어있습니다. 첫 운동을 기록해보세요!")
+                                    if not target_row.empty: delete_data(target_row.iloc[0]['row_id'])
+                                st.success("삭제 완료!"); time.sleep(1); st.rerun()
+            else: st.info("기록 없음")
+    else: st.info("첫 기록을 남겨보세요!")
