@@ -10,13 +10,22 @@ import time
 # --- 설정: 페이지 및 한국 시간 ---
 st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 
-# ★ [핵심 1] 모바일에서도 강제로 가로 2칸 유지시키는 스타일 코드 (CSS)
+# ★ [핵심] 모바일 강제 가로 정렬 CSS (무조건 한 줄로!) ★
 st.markdown("""
     <style>
-    [data-testid="column"] {
-        width: 50% !important;
-        flex: 1 1 50% !important;
-        min-width: 50% !important;
+    /* 가로 블록이 절대 줄바꿈되지 않도록 강제 설정 */
+    div[data-testid="stHorizontalBlock"] {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+    }
+    /* 컬럼의 최소 너비를 없애서 좁은 화면에서도 4개가 끼어 들어가게 함 */
+    div[data-testid="column"] {
+        flex: 1 !important;
+        min-width: 0px !important;
+    }
+    /* 체크박스 여백을 줄여서 더 빡빡하게 배치 */
+    div[data-testid="stCheckbox"] {
+        padding-right: 0px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -34,22 +43,19 @@ def get_google_sheet():
     sheet = client.open("운동일지_DB").sheet1 
     return sheet
 
-# --- 데이터 불러오기 (안전장치 강화) ---
+# --- 데이터 불러오기 ---
 def load_data():
-    # 기본 컬럼 정의 (에러 방지용)
     default_cols = ["날짜", "요일", "시간", "몸무게", "운동종목", "무게(kg)", "횟수", "메모"]
-    
     try:
         sheet = get_google_sheet()
         data = sheet.get_all_values()
         
-        # 데이터가 있고 헤더(1줄) 이상일 때
         if len(data) > 1:
             headers = data[0]
             rows = data[1:]
             df = pd.DataFrame(rows, columns=headers)
             
-            # ★ [핵심 2] '날짜' 컬럼이 없으면 강제로 생성 (KeyError 방지)
+            # 컬럼 누락 방지
             for col in default_cols:
                 if col not in df.columns:
                     df[col] = ""
@@ -57,11 +63,8 @@ def load_data():
             df['row_id'] = range(2, 2 + len(rows))
             return df
         else:
-            # 데이터가 없으면 빈 프레임 반환
             return pd.DataFrame(columns=default_cols)
-            
     except Exception as e:
-        # 연결 에러나면 빈 프레임 반환
         return pd.DataFrame(columns=default_cols)
 
 # --- 데이터 저장 ---
@@ -199,19 +202,15 @@ with tab1:
             
             st.write("👇 **세트 수행 체크**")
             
-            # 2x2 격자 배치
-            r1_c1, r1_c2 = st.columns(2)
-            with r1_c1:
-                if st.checkbox(f"1세트 ({base_reps}회)", key="set_0"): sets_done.append(str(base_reps))
-            with r1_c2:
-                if st.checkbox(f"2세트 ({base_reps}회)", key="set_1"): sets_done.append(str(base_reps))
+            # ★ 요청사항 반영: 가로 4칸 (라벨은 숫자만) ★
+            # 이제 상단 CSS 덕분에 폰에서도 한 줄에 4개가 나옵니다.
+            check_cols = st.columns(4)
+            for i in range(4):
+                with check_cols[i]:
+                    # 글자를 "15" 처럼 짧게 표시
+                    if st.checkbox(f"{base_reps}", key=f"set_{i}"):
+                        sets_done.append(str(base_reps))
             
-            r2_c1, r2_c2 = st.columns(2)
-            with r2_c1:
-                if st.checkbox(f"3세트 ({base_reps}회)", key="set_2"): sets_done.append(str(base_reps))
-            with r2_c2:
-                if st.checkbox(f"4세트 ({base_reps}회)", key="set_3"): sets_done.append(str(base_reps))
-
             save_weight_val = exercise_weight
             save_reps_str = " ".join(sets_done)
 
@@ -245,9 +244,7 @@ with tab2:
     st.subheader("📊 구글 시트 데이터 로딩 중...")
     df = load_data()
     
-    # 데이터가 비어있어도 컬럼은 존재하므로 안전함
     if not df.empty and '날짜' in df.columns:
-        # 날짜 컬럼 에러 처리
         df['dt_obj'] = pd.to_datetime(df['날짜'], errors='coerce')
         df = df.dropna(subset=['dt_obj'])
         
