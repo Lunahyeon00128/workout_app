@@ -261,4 +261,69 @@ with tab2:
             <style>
                 .calendar-table {width: 100%; text-align: center; border-collapse: collapse;}
                 .calendar-table th {background-color: #f0f2f6; padding: 10px; border: 1px solid #ddd;}
-                .calendar-table td {height: 80px; vertical-align
+                .calendar-table td {height: 80px; vertical-align: top; border: 1px solid #ddd; width: 14%;}
+                .workout-sticker {
+                    display: block; margin-top: 5px; 
+                    background-color: #FF4B4B; color: white; 
+                    border-radius: 50%; width: 24px; height: 24px; 
+                    line-height: 24px; margin-left: auto; margin-right: auto;
+                    font-size: 12px;
+                }
+                .date-num {font-weight: bold; display: block; margin-bottom: 5px;}
+            </style>
+            <table class="calendar-table">
+                <thead>
+                    <tr>
+                        <th style="color:red">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style="color:blue">토</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            for week in cal:
+                table_html += "<tr>"
+                for day in week:
+                    if day == 0:
+                        table_html += "<td></td>"
+                    else:
+                        sticker = ""
+                        if day in workout_days:
+                            sticker = "<span class='workout-sticker'>O</span>"
+                        table_html += f"<td><span class='date-num'>{day}</span>{sticker}</td>"
+                table_html += "</tr>"
+            table_html += "</tbody></table>"
+            st.markdown(table_html, unsafe_allow_html=True)
+            
+            st.divider()
+            st.subheader(f"📝 {selected_month}월 상세 기록")
+            
+            month_df = df[mask].copy()
+            month_df = month_df.sort_values(by=['dt_obj', '시간'], ascending=[False, True])
+            unique_dates = month_df['날짜'].unique()
+            
+            if len(unique_dates) > 0:
+                for d in unique_dates:
+                    day_data = month_df[month_df['날짜'] == d]
+                    with st.expander(f"📌 {d} (총 {len(day_data)}개)", expanded=False):
+                        display_cols = ['시간', '운동종목', '무게(kg)', '횟수', '메모']
+                        st.dataframe(day_data[display_cols], use_container_width=True, hide_index=True)
+                        
+                        if st.checkbox(f"🗑️ {d} 기록 삭제하기", key=f"del_mode_{d}"):
+                            st.warning("주의: 선택 후 삭제 버튼을 누르면 구글 시트에서 즉시 삭제됩니다.")
+                            options = day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1).tolist()
+                            selected_opts = st.multiselect("삭제할 항목 선택", options, key=f"del_sel_{d}")
+                            
+                            if st.button("선택 항목 영구 삭제", key=f"del_btn_{d}"):
+                                for opt in selected_opts:
+                                    target_row = day_data[day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1) == opt]
+                                    if not target_row.empty:
+                                        real_row_id = target_row.iloc[0]['row_id']
+                                        delete_data(real_row_id)
+                                st.success("삭제 완료! 잠시 후 새로고침 됩니다.")
+                                time.sleep(1)
+                                st.rerun()
+            else:
+                st.info("이 달에는 기록이 없습니다.")
+        else:
+            st.info("데이터는 있지만 유효한 날짜 형식이 없습니다.")
+    else:
+        st.info("아직 기록이 없거나 구글 시트가 비어있습니다. 첫 운동을 기록해보세요!")
