@@ -10,22 +10,14 @@ import time
 # --- 설정: 페이지 및 한국 시간 ---
 st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 
-# ★ [핵심] 모바일 강제 가로 정렬 CSS (무조건 한 줄로!) ★
+# ★ [CSS 수정] 모바일에서 2개 컬럼이 세로로 쌓이지 않고 '무조건 가로'로 유지되게 함
 st.markdown("""
     <style>
-    /* 가로 블록이 절대 줄바꿈되지 않도록 강제 설정 */
-    div[data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-    }
-    /* 컬럼의 최소 너비를 없애서 좁은 화면에서도 4개가 끼어 들어가게 함 */
-    div[data-testid="column"] {
-        flex: 1 !important;
-        min-width: 0px !important;
-    }
-    /* 체크박스 여백을 줄여서 더 빡빡하게 배치 */
-    div[data-testid="stCheckbox"] {
-        padding-right: 0px !important;
+    /* 좁은 화면에서도 컬럼이 위아래로 쌓이지 않고 50:50으로 유지되게 강제 설정 */
+    [data-testid="column"] {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 50% !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -55,7 +47,6 @@ def load_data():
             rows = data[1:]
             df = pd.DataFrame(rows, columns=headers)
             
-            # 컬럼 누락 방지
             for col in default_cols:
                 if col not in df.columns:
                     df[col] = ""
@@ -202,15 +193,21 @@ with tab1:
             
             st.write("👇 **세트 수행 체크**")
             
-            # ★ 요청사항 반영: 가로 4칸 (라벨은 숫자만) ★
-            # 이제 상단 CSS 덕분에 폰에서도 한 줄에 4개가 나옵니다.
-            check_cols = st.columns(4)
-            for i in range(4):
-                with check_cols[i]:
-                    # 글자를 "15" 처럼 짧게 표시
-                    if st.checkbox(f"{base_reps}", key=f"set_{i}"):
-                        sets_done.append(str(base_reps))
-            
+            # ★ 수정됨: 2x2 격자 배치 (완벽한 반응형) ★
+            # 1행 (1, 2세트)
+            row1_1, row1_2 = st.columns(2)
+            with row1_1:
+                if st.checkbox(f"{base_reps}", key="s1"): sets_done.append(str(base_reps))
+            with row1_2:
+                if st.checkbox(f"{base_reps}", key="s2"): sets_done.append(str(base_reps))
+                
+            # 2행 (3, 4세트)
+            row2_1, row2_2 = st.columns(2)
+            with row2_1:
+                if st.checkbox(f"{base_reps}", key="s3"): sets_done.append(str(base_reps))
+            with row2_2:
+                if st.checkbox(f"{base_reps}", key="s4"): sets_done.append(str(base_reps))
+
             save_weight_val = exercise_weight
             save_reps_str = " ".join(sets_done)
 
@@ -264,69 +261,4 @@ with tab2:
             <style>
                 .calendar-table {width: 100%; text-align: center; border-collapse: collapse;}
                 .calendar-table th {background-color: #f0f2f6; padding: 10px; border: 1px solid #ddd;}
-                .calendar-table td {height: 80px; vertical-align: top; border: 1px solid #ddd; width: 14%;}
-                .workout-sticker {
-                    display: block; margin-top: 5px; 
-                    background-color: #FF4B4B; color: white; 
-                    border-radius: 50%; width: 24px; height: 24px; 
-                    line-height: 24px; margin-left: auto; margin-right: auto;
-                    font-size: 12px;
-                }
-                .date-num {font-weight: bold; display: block; margin-bottom: 5px;}
-            </style>
-            <table class="calendar-table">
-                <thead>
-                    <tr>
-                        <th style="color:red">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style="color:blue">토</th>
-                    </tr>
-                </thead>
-                <tbody>
-            """
-            for week in cal:
-                table_html += "<tr>"
-                for day in week:
-                    if day == 0:
-                        table_html += "<td></td>"
-                    else:
-                        sticker = ""
-                        if day in workout_days:
-                            sticker = "<span class='workout-sticker'>O</span>"
-                        table_html += f"<td><span class='date-num'>{day}</span>{sticker}</td>"
-                table_html += "</tr>"
-            table_html += "</tbody></table>"
-            st.markdown(table_html, unsafe_allow_html=True)
-            
-            st.divider()
-            st.subheader(f"📝 {selected_month}월 상세 기록")
-            
-            month_df = df[mask].copy()
-            month_df = month_df.sort_values(by=['dt_obj', '시간'], ascending=[False, True])
-            unique_dates = month_df['날짜'].unique()
-            
-            if len(unique_dates) > 0:
-                for d in unique_dates:
-                    day_data = month_df[month_df['날짜'] == d]
-                    with st.expander(f"📌 {d} (총 {len(day_data)}개)", expanded=False):
-                        display_cols = ['시간', '운동종목', '무게(kg)', '횟수', '메모']
-                        st.dataframe(day_data[display_cols], use_container_width=True, hide_index=True)
-                        
-                        if st.checkbox(f"🗑️ {d} 기록 삭제하기", key=f"del_mode_{d}"):
-                            st.warning("주의: 선택 후 삭제 버튼을 누르면 구글 시트에서 즉시 삭제됩니다.")
-                            options = day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1).tolist()
-                            selected_opts = st.multiselect("삭제할 항목 선택", options, key=f"del_sel_{d}")
-                            
-                            if st.button("선택 항목 영구 삭제", key=f"del_btn_{d}"):
-                                for opt in selected_opts:
-                                    target_row = day_data[day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1) == opt]
-                                    if not target_row.empty:
-                                        real_row_id = target_row.iloc[0]['row_id']
-                                        delete_data(real_row_id)
-                                st.success("삭제 완료! 잠시 후 새로고침 됩니다.")
-                                time.sleep(1)
-                                st.rerun()
-            else:
-                st.info("이 달에는 기록이 없습니다.")
-        else:
-            st.info("데이터는 있지만 유효한 날짜 형식이 없습니다.")
-    else:
-        st.info("아직 기록이 없거나 구글 시트가 비어있습니다. 첫 운동을 기록해보세요!")
+                .calendar-table td {height: 80px; vertical-align
