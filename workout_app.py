@@ -16,12 +16,13 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 가로 오버플로우 방지 및 50:50 비율 완벽 고정 ★
+# ★ [스타일] 2026 박스 폭주 완벽 차단 (max-width 적용) ★
 st.markdown("""
     <style>
+    /* 화면 좌우로 흔들리는 현상(오버플로우) 원천 차단 */
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden; }
     
-    /* 15 버튼(Pills) 넓은 간격 및 모양 유지 */
+    /* 15 버튼(Pills) 여백 및 디자인 유지 */
     div[data-testid="stPills"] {
         width: 100% !important;
         margin-top: 10px !important;
@@ -30,31 +31,32 @@ st.markdown("""
         display: flex !important;
         flex-wrap: wrap !important; 
         justify-content: center !important; 
-        gap: 20px !important; 
+        gap: 15px !important; 
     }
     div[data-testid="stPills"] label {
         margin: 0 !important;
-        padding: 12px 25px !important; 
-        border-radius: 25px !important; 
+        padding: 12px 20px !important; 
+        border-radius: 20px !important; 
     }
     div[data-testid="stPills"] span {
-        font-size: 1.2rem !important;
+        font-size: 1.15rem !important;
         font-weight: bold !important;
     }
 
-    /* ★ 모바일 가로 배치 시 "한쪽이 커지는 현상" 완벽 차단 ★ */
-    @media (max-width: 768px) {
-        div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 10px !important; /* 상자 사이의 여백 */
-        }
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            /* 핵심: 안에 글자가 길든 짧든 무조건 50%씩 똑같이 나눠 가지도록 자물쇠를 채움 */
-            width: calc(50% - 5px) !important;
-            flex: 0 0 calc(50% - 5px) !important; 
-            min-width: 0 !important;
-        }
+    /* ★ 2026(연도) 박스가 화면을 다 잡아먹지 못하도록 절대적인 자물쇠 채우기 ★ */
+    div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        gap: 10px !important; /* 상자 사이 여백 10px */
+    }
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+        flex: 1 1 0 !important; /* 빈 공간을 무조건 1:1로 나눔 */
+        /* 여백 10px의 절반(5px)을 뺀 나머지만큼만 차지하게 수학적 계산 */
+        width: calc(50% - 5px) !important;
+        max-width: calc(50% - 5px) !important; /* 절대 이 크기를 못 넘게 잠금!! */
+        min-width: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
