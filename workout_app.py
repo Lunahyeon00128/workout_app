@@ -16,47 +16,47 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 2026 박스 폭주 완벽 차단 (max-width 적용) ★
+# ★ [스타일 최종 해결판] 화면 오버플로우 완벽 차단 & 15 버튼 간격 넓히기 ★
 st.markdown("""
     <style>
-    /* 화면 좌우로 흔들리는 현상(오버플로우) 원천 차단 */
-    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden; }
+    /* 전체 화면이 좌우로 흔들리거나 튀어나가는 현상 방지 */
+    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden !important; }
     
-    /* 15 버튼(Pills) 여백 및 디자인 유지 */
+    /* 1. 모든 2칸짜리 레이아웃(날짜/시간, 연도/월 등)이 절대 화면 밖으로 나가지 않게 조율 */
+    div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 15px !important; /* 상자 사이 여백 */
+        width: 100% !important; /* 화면 폭을 절대 넘지 않음 */
+    }
+    div[data-testid="column"] {
+        flex: 1 1 0px !important; /* 핵심: 남은 공간을 정확히 1:1로 유연하게 나눠 가짐 */
+        width: auto !important; 
+        min-width: 0 !important; /* 상자 안의 내용물이 길어도 상자 자체가 튀어나가지 않게 막음 */
+    }
+
+    /* 2. 15 버튼(Pills) - 버튼 자체는 늘리지 않고, 사이 간격(Gap)만 대폭 넓힘 */
     div[data-testid="stPills"] {
         width: 100% !important;
         margin-top: 10px !important;
     }
     div[data-testid="stPills"] > div {
         display: flex !important;
+        flex-direction: row !important;
         flex-wrap: wrap !important; 
         justify-content: center !important; 
-        gap: 15px !important; 
+        gap: 25px !important; /* ❤️ 버튼 사이를 넓게 띄워서 누르기 편하게 만듦 */
     }
     div[data-testid="stPills"] label {
+        flex: 0 0 auto !important; /* 버튼이 강제로 늘어나는 것을 방지 */
         margin: 0 !important;
-        padding: 12px 20px !important; 
+        padding: 10px 20px !important; 
         border-radius: 20px !important; 
     }
     div[data-testid="stPills"] span {
         font-size: 1.15rem !important;
         font-weight: bold !important;
-    }
-
-    /* ★ 2026(연도) 박스가 화면을 다 잡아먹지 못하도록 절대적인 자물쇠 채우기 ★ */
-    div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        width: 100% !important;
-        gap: 10px !important; /* 상자 사이 여백 10px */
-    }
-    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-        flex: 1 1 0 !important; /* 빈 공간을 무조건 1:1로 나눔 */
-        /* 여백 10px의 절반(5px)을 뺀 나머지만큼만 차지하게 수학적 계산 */
-        width: calc(50% - 5px) !important;
-        max-width: calc(50% - 5px) !important; /* 절대 이 크기를 못 넘게 잠금!! */
-        min-width: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -183,6 +183,7 @@ with tab1:
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
+            # 넓은 꼼수 문자열 완전 제거, 깔끔한 숫자로 복구
             pills_opts = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
             
             selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
