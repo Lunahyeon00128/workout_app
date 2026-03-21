@@ -16,9 +16,10 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 화면 오버플로우 원천 차단 (CSS Grid 도입) ★
+# ★ [스타일 최종 해결판] 화면 오버플로우 원천 차단 (CSS Grid 도입) ★
 st.markdown("""
     <style>
+    /* 전체 화면이 좌우로 흔들리거나 튀어나가는 현상 방지 */
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden !important; }
     
     /* 15 버튼(Pills) 넓은 간격 및 모양 유지 */
@@ -28,13 +29,15 @@ st.markdown("""
     }
     div[data-testid="stPills"] > div {
         display: flex !important;
+        flex-direction: row !important;
         flex-wrap: wrap !important; 
         justify-content: center !important; 
-        gap: 15px !important; 
+        gap: 25px !important; 
     }
     div[data-testid="stPills"] label {
+        flex: 0 0 auto !important;
         margin: 0 !important;
-        padding: 12px 20px !important; 
+        padding: 10px 20px !important; 
         border-radius: 20px !important; 
     }
     div[data-testid="stPills"] span {
@@ -117,16 +120,16 @@ tab1, tab2 = st.tabs(["✅ 기록 입력", "📅 캘린더 & 기록장"])
 with tab1:
     kst_now = get_kst_now()
     
-    col1, col2 = st.columns(2)
-    with col1:
-        date = st.date_input("날짜", kst_now.date(), label_visibility="collapsed")
-    with col2:
-        current_time_str = kst_now.strftime("%H:%M")
-        arrival_time = st.text_input("시간", value=current_time_str, label_visibility="collapsed")
+    # ★ 수정됨: 요청하신 날짜 및 시간 입력창(st.date_input, st.text_input)을 제거했습니다 ★
+    
+    # 대신, 앱은 실행 시각을 기준으로 날짜와 시간을 자동으로 파악하여 저장에 사용합니다.
+    date = kst_now.date()
+    arrival_time = kst_now.strftime("%H:%M")
     
     weekdays_kor = ["월", "화", "수", "목", "금", "토", "일"]
     today_yoil = weekdays_kor[date.weekday()]
 
+    # 이제 오늘 날짜 정보는 이 큰 제목으로만 깔끔하게 보여줍니다.
     st.markdown(f"### 📅 {date.strftime('%Y-%m-%d')} <span style='color:#FF4B4B'>({today_yoil}요일)</span>", unsafe_allow_html=True)
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
@@ -196,7 +199,6 @@ with tab1:
         with btn_col1:
             skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
         with btn_col2:
-            # ★ 버튼 이름 짧게 수정 ★
             save_next_btn = st.form_submit_button("💾 저장 & 다음", type="primary", use_container_width=True)
 
     if save_next_btn:
