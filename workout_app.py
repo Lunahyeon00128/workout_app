@@ -16,13 +16,12 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 가로 오버플로우(튀어나감) 방지 완벽 적용 ★
+# ★ [스타일] 가로 오버플로우 방지 및 50:50 비율 완벽 고정 ★
 st.markdown("""
     <style>
-    /* 가로로 튀어나가는 요소들을 숨겨서 화면이 좌우로 흔들리지 않게 보호 */
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden; }
     
-    /* 15 버튼(Pills) 간격 및 디자인 유지 */
+    /* 15 버튼(Pills) 넓은 간격 및 모양 유지 */
     div[data-testid="stPills"] {
         width: 100% !important;
         margin-top: 10px !important;
@@ -43,17 +42,17 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* ★ 모바일 가로 배치 시 박스가 제멋대로 커져서 튀어나가는 현상 완벽 차단 ★ */
+    /* ★ 모바일 가로 배치 시 "한쪽이 커지는 현상" 완벽 차단 ★ */
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 10px !important; /* 상자 사이의 안전한 여백 */
+            gap: 10px !important; /* 상자 사이의 여백 */
         }
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            /* 핵심: 화면 크기에 맞춰 박스들을 무조건 1:1(또는 1:1:1) 비율로 강제 분할함 */
-            flex: 1 1 0% !important; 
-            width: 100% !important; 
+            /* 핵심: 안에 글자가 길든 짧든 무조건 50%씩 똑같이 나눠 가지도록 자물쇠를 채움 */
+            width: calc(50% - 5px) !important;
+            flex: 0 0 calc(50% - 5px) !important; 
             min-width: 0 !important;
         }
     }
@@ -191,7 +190,6 @@ with tab1:
 
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
         
-        # 버튼 영역도 1:1 (50%씩) 공평하게 나뉘도록 st.columns(2)로 통일
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
             skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
