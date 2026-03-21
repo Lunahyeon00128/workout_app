@@ -13,45 +13,53 @@ st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 # 한국 시간대(KST) 고정
 KST = pytz.timezone('Asia/Seoul')
 
-# 파이썬 달력의 시작을 일요일(SUNDAY)로 강제 고정 (★ 캘린더 날짜 밀림 완벽 해결 ★)
+# 파이썬 달력의 시작을 일요일(SUNDAY)로 강제 고정 (캘린더 밀림 방지)
 calendar.setfirstweekday(calendar.SUNDAY)
 
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] CSS Grid를 사용하여 버튼 4개를 무조건 4등분으로 찢어놓음 ★
+# ★ [스타일 끝판왕] 모바일 세로 뭉침 현상 완벽 박살내기 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* Pills 내부를 Grid(격자)로 만들어 무조건 4칸(1fr)으로 동일하게 나눔 */
+    /* 1. 무게/횟수, 건너뛰기/저장 버튼이 세로로 쪼개지지 않고 '무조건 가로'로 남게 강제 설정 */
+    div[data-testid="stHorizontalBlock"] {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+    }
+    div[data-testid="column"] {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 0 !important; /* 모바일 강제 줄바꿈 방지 */
+    }
+
+    /* 2. 대망의 15 버튼(Pills) 4등분 강제 할당 */
     div[data-testid="stPills"] {
         width: 100% !important;
     }
     div[data-testid="stPills"] > div {
-        display: grid !important;
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 15px !important; /* 버튼 사이의 넓은 간격 */
+        display: flex !important;
         width: 100% !important;
+        justify-content: space-between !important; /* 4개를 양 끝으로 쫙 펼침 */
     }
-    
-    /* 각 알약 버튼의 안쪽 정렬과 크기 */
+    /* 버튼 4개에 각각 화면의 23% 폭을 절대적으로 할당 (23*4=92 + 사이 여백 8%) */
     div[data-testid="stPills"] label {
+        width: 23% !important;
+        flex: 0 0 23% !important; 
+        min-width: 0 !important; 
+        padding: 15px 0 !important;
         margin: 0 !important;
-        padding: 15px 0px !important; 
-        border-radius: 12px !important;
         display: flex !important;
         justify-content: center !important;
-        align-items: center !important;
+        border-radius: 12px !important;
     }
-
+    /* 15 숫자 크기 키우기 */
     div[data-testid="stPills"] span {
-        font-size: 1.25rem !important;
+        font-size: 1.2rem !important;
         font-weight: bold !important;
     }
-
-    /* 하단 버튼 가로 배치 */
-    [data-testid="column"] { flex: 1 1 50% !important; min-width: 50% !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -150,7 +158,6 @@ with tab1:
 
     selected_exercise = st.selectbox("운동 종목 (저장 시 자동 넘어감)", exercise_list, index=current_index)
 
-    # ★ 영상 링크 복구 완료 ★
     video_links = {
         "시티드 체스트 프레스": "https://youtube.com/shorts/AKzdQPAEGMQ?si=MVTrPeUXfvs2aJR9",
         "하이폴리": "https://youtube.com/shorts/5UPOD0he724?si=SahBffFfYiOmS-Vn",
@@ -191,15 +198,12 @@ with tab1:
 
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
         
-        # ★ 버튼 통합 로직 ★
-        # 저장 & 다음 버튼을 메인으로 크게 만들고, 안 하고 넘어갈 때를 위해 건너뛰기를 작게 배치
-        btn_col1, btn_col2 = st.columns([1, 2])
+        btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
             skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
         with btn_col2:
-            save_next_btn = st.form_submit_button("💾 구글 시트에 저장 & 다음 (Next)", type="primary", use_container_width=True)
+            save_next_btn = st.form_submit_button("💾 시트에 저장 & 다음", type="primary", use_container_width=True)
 
-    # 1. 저장하고 넘어가기 (합쳐진 기능)
     if save_next_btn:
         if not sets_done:
             st.warning("⚠️ 세트 체크를 해주세요!")
@@ -207,11 +211,10 @@ with tab1:
             row_data = [date.strftime('%Y-%m-%d'), today_yoil, arrival_time, weight, selected_exercise, save_weight_val, save_reps_str, memo]
             if save_data(row_data):
                 st.success(f"✅ {selected_exercise} 저장 완료! 다음으로 넘어갑니다.")
-                time.sleep(0.8) # 저장되었다는 메시지를 잠시 보여준 후
+                time.sleep(0.8) 
                 st.session_state['exercise_index'] = (current_index + 1) % len(exercise_list)
-                st.rerun() # 화면 갱신 (다음 운동으로)
+                st.rerun() 
 
-    # 2. 저장 안하고 그냥 넘어가기 (건너뛰기)
     if skip_btn:
         st.session_state['exercise_index'] = (current_index + 1) % len(exercise_list)
         st.rerun()
