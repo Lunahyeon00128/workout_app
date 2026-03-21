@@ -16,12 +16,12 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 연도/월 가로 배치 및 버튼 여백 유지 ★
+# ★ [스타일] 가로 오버플로우(튀어나감) 방지 완벽 적용 ★
 st.markdown("""
     <style>
-    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden; }
     
-    /* 15 버튼(Pills) 넓은 간격 및 가로/세로 자동 배치 */
+    /* 15 버튼(Pills) 간격 */
     div[data-testid="stPills"] {
         width: 100% !important;
         margin-top: 10px !important;
@@ -42,15 +42,16 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* ★ 모바일(좁은 화면)에서 연도/월, 무게/횟수 등이 세로로 쌓이지 않고 무조건 반반 가로 배치되도록 강제 ★ */
+    /* ★ 모바일 가로 배치 시 튀어나감(Overflow) 방지 로직 ★ */
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
+            gap: 15px !important; /* 상자 사이의 여백 고정 */
         }
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            width: 50% !important;
-            flex: 1 1 50% !important;
+            flex: 1 1 0px !important; /* 핵심: 화면 크기에 맞춰 1:1로 정확히 크기를 줄임 */
+            width: auto !important;
             min-width: 0 !important;
         }
     }
@@ -213,8 +214,6 @@ with tab1:
 # 탭 2: 캘린더 & 기록장
 # ==========================================
 with tab2:
-    # 요청하신 "구글 시트 데이터" 제목 삭제 완료
-    
     with st.spinner("데이터를 안전하게 불러오는 중입니다... 잠시만 기다려주세요."):
         df = load_data()
     
@@ -227,7 +226,6 @@ with tab2:
             
             now_kst = get_kst_now()
             
-            # 연도와 월을 한 줄에 (가로 배치)
             year_col, month_col = st.columns(2)
             with year_col:
                 selected_year = st.selectbox("연도", [now_kst.year, now_kst.year-1], index=0)
