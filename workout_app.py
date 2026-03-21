@@ -16,32 +16,43 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 버튼 사이 여백 넓게 유지 ★
+# ★ [스타일] 연도/월 가로 배치 및 버튼 여백 유지 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
+    /* 15 버튼(Pills) 넓은 간격 및 가로/세로 자동 배치 */
     div[data-testid="stPills"] {
         width: 100% !important;
         margin-top: 10px !important;
     }
-    
     div[data-testid="stPills"] > div {
         display: flex !important;
         flex-wrap: wrap !important; 
         justify-content: center !important; 
         gap: 20px !important; 
     }
-    
     div[data-testid="stPills"] label {
         margin: 0 !important;
         padding: 12px 25px !important; 
         border-radius: 25px !important; 
     }
-    
     div[data-testid="stPills"] span {
         font-size: 1.2rem !important;
         font-weight: bold !important;
+    }
+
+    /* ★ 모바일(좁은 화면)에서 연도/월, 무게/횟수 등이 세로로 쌓이지 않고 무조건 반반 가로 배치되도록 강제 ★ */
+    @media (max-width: 768px) {
+        div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            width: 50% !important;
+            flex: 1 1 50% !important;
+            min-width: 0 !important;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -177,7 +188,7 @@ with tab1:
 
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
         
-        btn_col1, btn_col2 = st.columns([1, 2])
+        btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
             skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
         with btn_col2:
@@ -202,7 +213,7 @@ with tab1:
 # 탭 2: 캘린더 & 기록장
 # ==========================================
 with tab2:
-    st.markdown("### 📊 구글 시트 데이터")
+    # 요청하신 "구글 시트 데이터" 제목 삭제 완료
     
     with st.spinner("데이터를 안전하게 불러오는 중입니다... 잠시만 기다려주세요."):
         df = load_data()
@@ -216,7 +227,7 @@ with tab2:
             
             now_kst = get_kst_now()
             
-            # ★ 수정됨: 연도와 월을 한 줄에 (가로 배치) ★
+            # 연도와 월을 한 줄에 (가로 배치)
             year_col, month_col = st.columns(2)
             with year_col:
                 selected_year = st.selectbox("연도", [now_kst.year, now_kst.year-1], index=0)
@@ -228,10 +239,9 @@ with tab2:
             
             cal = calendar.monthcalendar(selected_year, selected_month)
             
-            # ★ 수정됨: 다크모드 대응 배경색(#1E1E1E) 및 테두리(#444) 설정 ★
             table_html = """
             <style>
-                .cal-table {width: 100%; text-align: center; border-collapse: collapse; font-size: 14px;}
+                .cal-table {width: 100%; text-align: center; border-collapse: collapse; font-size: 14px; margin-top: 10px;}
                 .cal-table th {background-color: #1E1E1E; padding: 8px; border: 1px solid #444; color: #ddd;}
                 .cal-table td {height: 60px; vertical-align: top; border: 1px solid #444; width: 14%; padding: 5px;}
                 .sticker {display: block; margin: 3px auto; background-color: #FF4B4B; color: white; border-radius: 50%; width: 22px; height: 22px; line-height: 22px; font-size: 11px;}
