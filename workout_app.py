@@ -13,47 +13,45 @@ st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 # 한국 시간대(KST) 고정
 KST = pytz.timezone('Asia/Seoul')
 
+# 파이썬 달력의 시작을 일요일(SUNDAY)로 강제 고정 (★ 캘린더 날짜 밀림 완벽 해결 ★)
+calendar.setfirstweekday(calendar.SUNDAY)
+
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일 최종 해결판] 내부 상자까지 강제로 100% 찢어(?) 놓는 코드 ★
+# ★ [스타일] CSS Grid를 사용하여 버튼 4개를 무조건 4등분으로 찢어놓음 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 1. 가장 바깥쪽 상자를 가로 100%로 설정 */
+    /* Pills 내부를 Grid(격자)로 만들어 무조건 4칸(1fr)으로 동일하게 나눔 */
     div[data-testid="stPills"] {
-        display: block !important;
         width: 100% !important;
     }
-    
-    /* 2. 버튼들을 직접 감싸고 있는 '안쪽 상자'를 100%로 강제 확장하고 틈을 벌림 */
     div[data-testid="stPills"] > div {
-        display: flex !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 15px !important; /* 버튼 사이의 넓은 간격 */
         width: 100% !important;
-        flex-direction: row !important;
-        justify-content: space-between !important; /* 양 끝으로 쫙 펴주기 */
-        gap: 15px !important; /* 버튼과 버튼 사이의 물리적 간격 */
     }
     
-    /* 3. 4개의 버튼이 전체 공간을 똑같은 비율(1:1:1:1)로 나눠 가지도록 강제 설정 */
-    div[data-testid="stPills"] button {
-        flex: 1 1 0% !important; /* 핵심: 빈 공간을 모두 나눠가짐 */
-        width: 100% !important;
-        padding: 12px 0 !important;
-        border-radius: 10px !important;
+    /* 각 알약 버튼의 안쪽 정렬과 크기 */
+    div[data-testid="stPills"] label {
+        margin: 0 !important;
+        padding: 15px 0px !important; 
+        border-radius: 12px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
     }
 
-    /* 4. 버튼 안의 '15' 글자를 크고 굵게 */
-    div[data-testid="stPills"] p, 
     div[data-testid="stPills"] span {
         font-size: 1.25rem !important;
-        font-weight: 800 !important;
-        margin: 0 !important;
+        font-weight: bold !important;
     }
 
-    /* 하단 저장/다음 버튼 가로 배치 유지 */
-    [data-testid="column"] { width: 50% !important; flex: 1 1 50% !important; min-width: 50% !important; }
+    /* 하단 버튼 가로 배치 */
+    [data-testid="column"] { flex: 1 1 50% !important; min-width: 50% !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -150,7 +148,21 @@ with tab1:
     current_index = st.session_state['exercise_index']
     if current_index >= len(exercise_list): current_index = 0
 
-    selected_exercise = st.selectbox("현재 운동 종목", exercise_list, index=current_index)
+    selected_exercise = st.selectbox("운동 종목 (저장 시 자동 넘어감)", exercise_list, index=current_index)
+
+    # ★ 영상 링크 복구 완료 ★
+    video_links = {
+        "시티드 체스트 프레스": "https://youtube.com/shorts/AKzdQPAEGMQ?si=MVTrPeUXfvs2aJR9",
+        "하이폴리": "https://youtube.com/shorts/5UPOD0he724?si=SahBffFfYiOmS-Vn",
+        "롱풀": "https://youtube.com/shorts/t6edD5c7QWw?si=R0X5k8scgPocC-pv",
+        "소미핏": "https://youtu.be/tZbTY9j_L9o?si=8kCxZvj8b3tZy_4J",
+        "스쿼트": "https://youtu.be/urOSaROmTIk?si=rnS-BkOKbb4EGZc-",
+        "레그프레스": "https://youtube.com/shorts/FcHwWI2sulg?si=BQL8nCtplDJprZLa",
+        "업도미널": "https://youtube.com/shorts/6O0YQY8u-Io?si=mGkzGrR4L0jKi57N"
+    }
+
+    if selected_exercise in video_links:
+        st.markdown(f"👉 **[{selected_exercise} 자세 영상 보기 (YouTube)]({video_links[selected_exercise]})**")
 
     with st.form("workout_form", clear_on_submit=True):
         sets_done = []
@@ -179,22 +191,28 @@ with tab1:
 
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
         
-        btn_col1, btn_col2 = st.columns(2)
+        # ★ 버튼 통합 로직 ★
+        # 저장 & 다음 버튼을 메인으로 크게 만들고, 안 하고 넘어갈 때를 위해 건너뛰기를 작게 배치
+        btn_col1, btn_col2 = st.columns([1, 2])
         with btn_col1:
-            next_btn = st.form_submit_button("⏭️ 다음으로", use_container_width=True)
+            skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
         with btn_col2:
-            save_btn = st.form_submit_button("💾 시트에 저장", type="primary", use_container_width=True)
+            save_next_btn = st.form_submit_button("💾 구글 시트에 저장 & 다음 (Next)", type="primary", use_container_width=True)
 
-    if save_btn:
+    # 1. 저장하고 넘어가기 (합쳐진 기능)
+    if save_next_btn:
         if not sets_done:
             st.warning("⚠️ 세트 체크를 해주세요!")
         else:
             row_data = [date.strftime('%Y-%m-%d'), today_yoil, arrival_time, weight, selected_exercise, save_weight_val, save_reps_str, memo]
             if save_data(row_data):
-                st.success(f"✅ {selected_exercise} 저장됨!")
-                time.sleep(1)
+                st.success(f"✅ {selected_exercise} 저장 완료! 다음으로 넘어갑니다.")
+                time.sleep(0.8) # 저장되었다는 메시지를 잠시 보여준 후
+                st.session_state['exercise_index'] = (current_index + 1) % len(exercise_list)
+                st.rerun() # 화면 갱신 (다음 운동으로)
 
-    if next_btn:
+    # 2. 저장 안하고 그냥 넘어가기 (건너뛰기)
+    if skip_btn:
         st.session_state['exercise_index'] = (current_index + 1) % len(exercise_list)
         st.rerun()
 
