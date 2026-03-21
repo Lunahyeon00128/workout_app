@@ -19,45 +19,36 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일 끝판왕] 모바일 세로 뭉침 현상 완벽 박살내기 ★
+# ★ [스타일 안전판] 화면 망가지는 코드 제거 & 15버튼만 100% 꽉채우기 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 1. 무게/횟수, 건너뛰기/저장 버튼이 세로로 쪼개지지 않고 '무조건 가로'로 남게 강제 설정 */
-    div[data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-    }
-    div[data-testid="column"] {
-        width: 50% !important;
-        flex: 1 1 50% !important;
-        min-width: 0 !important; /* 모바일 강제 줄바꿈 방지 */
-    }
-
-    /* 2. 대망의 15 버튼(Pills) 4등분 강제 할당 */
+    /* 오직 '세트 체크(Pills)' 영역만 콕 집어서 디자인 변경 */
     div[data-testid="stPills"] {
         width: 100% !important;
     }
     div[data-testid="stPills"] > div {
         display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important; /* 무조건 한 줄로 유지 */
         width: 100% !important;
-        justify-content: space-between !important; /* 4개를 양 끝으로 쫙 펼침 */
+        gap: 10px !important; /* 버튼 사이 간격 */
     }
-    /* 버튼 4개에 각각 화면의 23% 폭을 절대적으로 할당 (23*4=92 + 사이 여백 8%) */
+    
+    /* 4개의 버튼이 부모 넓이의 1/4씩 정확히 나눠가지도록 설정 (핵심) */
     div[data-testid="stPills"] label {
-        width: 23% !important;
-        flex: 0 0 23% !important; 
-        min-width: 0 !important; 
-        padding: 15px 0 !important;
+        flex: 1 1 0px !important; 
+        padding: 12px 0px !important; 
         margin: 0 !important;
         display: flex !important;
         justify-content: center !important;
+        align-items: center !important;
         border-radius: 12px !important;
     }
-    /* 15 숫자 크기 키우기 */
+
     div[data-testid="stPills"] span {
-        font-size: 1.2rem !important;
+        font-size: 1.15rem !important;
         font-weight: bold !important;
     }
     </style>
