@@ -16,34 +16,40 @@ KST = pytz.timezone('Asia/Seoul')
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일 무적판] 버튼 자체에 마진(Margin)을 강제로 부여 ★
+# ★ [스타일 최종 해결판] 내부 상자까지 강제로 100% 찢어(?) 놓는 코드 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 1. Pills 컨테이너 영역 100% 확보 */
+    /* 1. 가장 바깥쪽 상자를 가로 100%로 설정 */
     div[data-testid="stPills"] {
+        display: block !important;
         width: 100% !important;
-        display: flex !important;
-        justify-content: center !important;
     }
     
-    /* 2. 실제 클릭되는 버튼(label)에 직접 강제 여백(margin) 부여 */
-    /* 좌우로 12px씩 밀어내므로, 버튼 사이는 총 24px의 넓은 간격이 생깁니다 */
-    div[data-testid="stPills"] label {
-        margin: 5px 12px !important; 
-        padding: 12px 0px !important; 
-        flex: 1 1 0px !important; /* 4개가 똑같은 크기로 늘어남 */
-        border-radius: 12px !important;
+    /* 2. 버튼들을 직접 감싸고 있는 '안쪽 상자'를 100%로 강제 확장하고 틈을 벌림 */
+    div[data-testid="stPills"] > div {
         display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
+        width: 100% !important;
+        flex-direction: row !important;
+        justify-content: space-between !important; /* 양 끝으로 쫙 펴주기 */
+        gap: 15px !important; /* 버튼과 버튼 사이의 물리적 간격 */
+    }
+    
+    /* 3. 4개의 버튼이 전체 공간을 똑같은 비율(1:1:1:1)로 나눠 가지도록 강제 설정 */
+    div[data-testid="stPills"] button {
+        flex: 1 1 0% !important; /* 핵심: 빈 공간을 모두 나눠가짐 */
+        width: 100% !important;
+        padding: 12px 0 !important;
+        border-radius: 10px !important;
     }
 
-    /* 3. 폰트 크기를 키워서 15가 더 잘 보이게 함 */
+    /* 4. 버튼 안의 '15' 글자를 크고 굵게 */
+    div[data-testid="stPills"] p, 
     div[data-testid="stPills"] span {
         font-size: 1.25rem !important;
         font-weight: 800 !important;
+        margin: 0 !important;
     }
 
     /* 하단 저장/다음 버튼 가로 배치 유지 */
@@ -198,7 +204,7 @@ with tab1:
 with tab2:
     st.markdown("### 📊 구글 시트 데이터")
     
-    with st.spinner("데이터를 불러오는 중입니다..."):
+    with st.spinner("데이터를 안전하게 불러오는 중입니다... 잠시만 기다려주세요."):
         df = load_data()
     
     if not df.empty and '날짜' in df.columns:
