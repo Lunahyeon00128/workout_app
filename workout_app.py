@@ -19,9 +19,10 @@ def get_kst_now():
 # ★ [스타일] 가로 오버플로우(튀어나감) 방지 완벽 적용 ★
 st.markdown("""
     <style>
+    /* 가로로 튀어나가는 요소들을 숨겨서 화면이 좌우로 흔들리지 않게 보호 */
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden; }
     
-    /* 15 버튼(Pills) 간격 */
+    /* 15 버튼(Pills) 간격 및 디자인 유지 */
     div[data-testid="stPills"] {
         width: 100% !important;
         margin-top: 10px !important;
@@ -42,16 +43,17 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* ★ 모바일 가로 배치 시 튀어나감(Overflow) 방지 로직 ★ */
+    /* ★ 모바일 가로 배치 시 박스가 제멋대로 커져서 튀어나가는 현상 완벽 차단 ★ */
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 15px !important; /* 상자 사이의 여백 고정 */
+            gap: 10px !important; /* 상자 사이의 안전한 여백 */
         }
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            flex: 1 1 0px !important; /* 핵심: 화면 크기에 맞춰 1:1로 정확히 크기를 줄임 */
-            width: auto !important;
+            /* 핵심: 화면 크기에 맞춰 박스들을 무조건 1:1(또는 1:1:1) 비율로 강제 분할함 */
+            flex: 1 1 0% !important; 
+            width: 100% !important; 
             min-width: 0 !important;
         }
     }
@@ -189,6 +191,7 @@ with tab1:
 
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
         
+        # 버튼 영역도 1:1 (50%씩) 공평하게 나뉘도록 st.columns(2)로 통일
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
             skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
