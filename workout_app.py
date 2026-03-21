@@ -13,30 +13,30 @@ st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 # 한국 시간대(KST) 고정
 KST = pytz.timezone('Asia/Seoul')
 
-# 파이썬 달력의 시작을 일요일(SUNDAY)로 강제 고정 (캘린더 밀림 방지)
+# 파이썬 달력의 시작을 일요일(SUNDAY)로 강제 고정
 calendar.setfirstweekday(calendar.SUNDAY)
 
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일 안전판] 화면 망가지는 코드 제거 & 15버튼만 100% 꽉채우기 ★
+# ★ [스타일 안전판] 15버튼만 가로로 꽉 차게 (화면 안 깨짐) ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 오직 '세트 체크(Pills)' 영역만 콕 집어서 디자인 변경 */
+    /* 오직 '세트 체크(Pills)' 영역만 콕 집어서 넓게 만듭니다 */
     div[data-testid="stPills"] {
         width: 100% !important;
     }
     div[data-testid="stPills"] > div {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: nowrap !important; /* 무조건 한 줄로 유지 */
+        flex-wrap: nowrap !important;
         width: 100% !important;
-        gap: 10px !important; /* 버튼 사이 간격 */
+        gap: 10px !important; 
     }
     
-    /* 4개의 버튼이 부모 넓이의 1/4씩 정확히 나눠가지도록 설정 (핵심) */
+    /* 4개의 버튼이 부모 넓이의 1/4씩 정확히 나눠가지도록 설정 */
     div[data-testid="stPills"] label {
         flex: 1 1 0px !important; 
         padding: 12px 0px !important; 
@@ -124,16 +124,18 @@ with tab1:
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
-    routine_A = ["시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", "러닝/걷기", "사이드 레터럴 레이즈", "스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", "기타"]
-    routine_B = ["스쿼트", "레그프레스", "힙 어덕터 & 어브덕터", "업도미널", "러닝/걷기", "시티드 체스트 프레스", "하이폴리", "롱풀", "소미핏", "사이드 레터럴 레이즈", "기타"]
+    # ★ 새로운 루틴 적용 (월수금일 / 화목토) ★
+    routine_A = ["간헐적운동법", "루마니안 데드리프트", "백 익스텐션 (로만 체어)", "고블릿 스쿼트"]
+    routine_B = ["간헐적운동법", "레그프레스", "롱풀", "업도미널"]
 
-    if date.weekday() in [1, 3]: # 화, 목
+    # 1:화, 3:목, 5:토
+    if date.weekday() in [1, 3, 5]: 
         exercise_list = routine_B
-        routine_name = "🔥 하체 / 전신 루틴 (화/목)"
+        routine_name = "🔥 화/목/토 루틴"
         style_color = "#FF4B4B" 
-    else:
+    else: # 0:월, 2:수, 4:금, 6:일
         exercise_list = routine_A
-        routine_name = "💪 상체 집중 루틴 (월/수/금)"
+        routine_name = "💪 월/수/금/일 루틴"
         style_color = "#1E90FF" 
 
     if st.session_state['last_selected_date'] != date:
@@ -149,13 +151,14 @@ with tab1:
 
     selected_exercise = st.selectbox("운동 종목 (저장 시 자동 넘어감)", exercise_list, index=current_index)
 
+    # ★ 새로운 영상 링크 매핑 ★
     video_links = {
-        "시티드 체스트 프레스": "https://youtube.com/shorts/AKzdQPAEGMQ?si=MVTrPeUXfvs2aJR9",
-        "하이폴리": "https://youtube.com/shorts/5UPOD0he724?si=SahBffFfYiOmS-Vn",
-        "롱풀": "https://youtube.com/shorts/t6edD5c7QWw?si=R0X5k8scgPocC-pv",
-        "소미핏": "https://youtu.be/tZbTY9j_L9o?si=8kCxZvj8b3tZy_4J",
-        "스쿼트": "https://youtu.be/urOSaROmTIk?si=rnS-BkOKbb4EGZc-",
+        "간헐적운동법": "https://youtu.be/wF6jioOA7tU?si=MAQPRvZJtdNbcS52",
+        "루마니안 데드리프트": "https://youtube.com/shorts/f5YwjonCq4M?si=V3lljqm-lOypJopE",
+        "백 익스텐션 (로만 체어)": "https://youtube.com/shorts/9-iQPQtWAtQ?si=LdlthAj_14UmzDmM",
+        "고블릿 스쿼트": "https://youtube.com/shorts/ltiO7lZPRdA?si=zJlgEvHCSK00gx0e",
         "레그프레스": "https://youtube.com/shorts/FcHwWI2sulg?si=BQL8nCtplDJprZLa",
+        "롱풀": "https://youtube.com/shorts/t6edD5c7QWw?si=R0X5k8scgPocC-pv",
         "업도미널": "https://youtube.com/shorts/6O0YQY8u-Io?si=mGkzGrR4L0jKi57N"
     }
 
@@ -167,15 +170,13 @@ with tab1:
         save_reps_str = ""
         save_weight_val = 0
 
-        if selected_exercise == "소미핏":
-            is_somifit_done = st.checkbox("✅ 완료!", value=False)
-            if is_somifit_done: sets_done = ["Completed"]; save_reps_str = "완료"
-        elif selected_exercise == "러닝/걷기":
-            c1, c2, c3 = st.columns(3)
-            with c1: run_min = st.number_input("분", 30, step=5)
-            with c2: run_spd = st.number_input("속도", 1.0, 10.0, 5.6, 0.1)
-            with c3: run_inc = st.number_input("경사", 0, 9, 0, 1)
-            sets_done = ["Done"]; save_weight_val = run_spd; save_reps_str = f"{run_min}분 (경사 {run_inc})"
+        # 간헐적운동법은 완료 체크박스만 제공
+        if selected_exercise == "간헐적운동법":
+            is_done = st.checkbox("✅ 간헐적운동법 완료!", value=False)
+            if is_done: 
+                sets_done = ["Completed"]
+                save_reps_str = "완료"
+                
         else:
             c1, c2 = st.columns(2)
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
@@ -197,7 +198,7 @@ with tab1:
 
     if save_next_btn:
         if not sets_done:
-            st.warning("⚠️ 세트 체크를 해주세요!")
+            st.warning("⚠️ 수행 내역을 체크해주세요!")
         else:
             row_data = [date.strftime('%Y-%m-%d'), today_yoil, arrival_time, weight, selected_exercise, save_weight_val, save_reps_str, memo]
             if save_data(row_data):
