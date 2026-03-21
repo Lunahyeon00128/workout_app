@@ -16,25 +16,34 @@ KST = pytz.timezone('Asia/Seoul')
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일 강화] 버튼 간격 및 패딩 대폭 확대 ★
+# ★ [스타일 무적판] 버튼 자체에 마진(Margin)을 강제로 부여 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 알약 버튼(Pills) 사이의 좌우 간격을 강제로 25px로 설정 */
-    div[data-testid="stPills"] { 
+    /* 1. Pills 컨테이너 영역 100% 확보 */
+    div[data-testid="stPills"] {
+        width: 100% !important;
         display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 25px !important; 
         justify-content: center !important;
-        padding: 10px 0 !important;
     }
     
-    /* 각 버튼 자체의 크기를 키워 터치하기 편하게 함 */
-    div[data-testid="stPills"] button {
-        padding: 10px 25px !important;
-        min-width: 75px !important;
-        border-radius: 20px !important;
+    /* 2. 실제 클릭되는 버튼(label)에 직접 강제 여백(margin) 부여 */
+    /* 좌우로 12px씩 밀어내므로, 버튼 사이는 총 24px의 넓은 간격이 생깁니다 */
+    div[data-testid="stPills"] label {
+        margin: 5px 12px !important; 
+        padding: 12px 0px !important; 
+        flex: 1 1 0px !important; /* 4개가 똑같은 크기로 늘어남 */
+        border-radius: 12px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    /* 3. 폰트 크기를 키워서 15가 더 잘 보이게 함 */
+    div[data-testid="stPills"] span {
+        font-size: 1.25rem !important;
+        font-weight: 800 !important;
     }
 
     /* 하단 저장/다음 버튼 가로 배치 유지 */
@@ -55,7 +64,7 @@ def get_google_sheet():
         st.error(f"구글 시트 연결 실패: {e}")
         return None
 
-# --- 데이터 로드 (에러 방지 강화) ---
+# --- 데이터 로드 ---
 def load_data():
     default_cols = ["날짜", "요일", "시간", "몸무게", "운동종목", "무게(kg)", "횟수", "메모"]
     sheet = get_google_sheet()
@@ -65,7 +74,6 @@ def load_data():
         data = sheet.get_all_values()
         if len(data) > 1:
             df = pd.DataFrame(data[1:], columns=data[0])
-            # 필수 컬럼 확인 및 추가
             for col in default_cols:
                 if col not in df.columns: df[col] = ""
             df['row_id'] = range(2, 2 + len(df))
@@ -101,13 +109,11 @@ with tab1:
     
     col1, col2 = st.columns(2)
     with col1:
-        # 한국 날짜 기준 기본값
         date = st.date_input("날짜", kst_now.date(), label_visibility="collapsed")
     with col2:
         current_time_str = kst_now.strftime("%H:%M")
         arrival_time = st.text_input("시간", value=current_time_str, label_visibility="collapsed")
     
-    # 요일 계산 (KST 기준)
     weekdays_kor = ["월", "화", "수", "목", "금", "토", "일"]
     today_yoil = weekdays_kor[date.weekday()]
 
@@ -159,7 +165,6 @@ with tab1:
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
-            # 넓어진 간격의 버튼들
             pills_opts = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
             selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
             if selected_pills:
@@ -188,18 +193,19 @@ with tab1:
         st.rerun()
 
 # ==========================================
-# 탭 2: 캘린더 & 기록장 (백지 현상 해결)
+# 탭 2: 캘린더 & 기록장
 # ==========================================
 with tab2:
-    df = load_data()
+    st.markdown("### 📊 구글 시트 데이터")
+    
+    with st.spinner("데이터를 불러오는 중입니다..."):
+        df = load_data()
     
     if not df.empty and '날짜' in df.columns:
-        # 날짜 변환 에러 방지
         df['dt_obj'] = pd.to_datetime(df['날짜'], errors='coerce')
         df = df.dropna(subset=['dt_obj'])
         
         if not df.empty:
-            st.subheader("📅 월별 운동 현황")
             df['day'] = df['dt_obj'].dt.day
             
             now_kst = get_kst_now()
@@ -236,11 +242,24 @@ with tab2:
             month_df = df[mask].sort_values(by=['dt_obj', '시간'], ascending=[False, True])
             unique_dates = month_df['날짜'].unique()
             
-            for d in unique_dates:
-                day_data = month_df[month_df['날짜'] == d]
-                with st.expander(f"📌 {d} ({len(day_data)}개 종목)", expanded=False):
-                    st.dataframe(day_data[['시간', '운동종목', '무게(kg)', '횟수', '메모']], use_container_width=True, hide_index=True)
+            if len(unique_dates) > 0:
+                for d in unique_dates:
+                    day_data = month_df[month_df['날짜'] == d]
+                    with st.expander(f"📌 {d} ({len(day_data)}개 종목)", expanded=False):
+                        st.dataframe(day_data[['시간', '운동종목', '무게(kg)', '횟수', '메모']], use_container_width=True, hide_index=True)
+                        
+                        if st.checkbox(f"🗑️ {d} 기록 삭제하기", key=f"del_mode_{d}"):
+                            st.warning("주의: 삭제 시 구글 시트에서 즉시 지워집니다.")
+                            options = day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1).tolist()
+                            selected_opts = st.multiselect("삭제할 항목", options, key=f"del_sel_{d}")
+                            if st.button("영구 삭제", key=f"del_btn_{d}"):
+                                for opt in selected_opts:
+                                    target_row = day_data[day_data.apply(lambda x: f"{x['운동종목']} ({x['시간']})", axis=1) == opt]
+                                    if not target_row.empty: delete_data(target_row.iloc[0]['row_id'])
+                                st.success("삭제 완료!"); time.sleep(1); st.rerun()
+            else:
+                st.info(f"{selected_month}월에는 운동 기록이 없습니다. 💪 화이팅!")
         else:
-            st.info("이 달에는 아직 기록이 없습니다.")
+            st.info("구글 시트는 연결되었지만, 유효한 날짜 기록이 없습니다.")
     else:
-        st.info("구글 시트에 기록이 없습니다. 먼저 기록을 남겨보세요!")
+        st.info("구글 시트에 기록이 없습니다. 첫 운동을 기록해보세요!")
