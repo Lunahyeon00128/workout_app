@@ -16,38 +16,36 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 모바일 가로 찢기 + 폰트 확대 ★
+# ★ [스타일] 화면 깨짐 원인 제거 & 버튼 사이 '간격(gap)'만 대폭 넓힘 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 1. 모바일에서 [무게/횟수] 및 [하단 버튼]이 세로로 쪼개지지 않도록 강제 방어 */
-    div[data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important;
-    }
-    div[data-testid="column"] {
-        min-width: 0 !important;
-    }
-
-    /* 2. 15버튼 영역(Pills) 가로 100% 사용 및 분배 */
+    /* 오직 15 버튼(Pills) 그룹에만 적용 (다른 화면 절대 안 건드림) */
     div[data-testid="stPills"] {
         width: 100% !important;
+        margin-top: 10px !important;
     }
+    
+    /* 버튼들을 감싸는 상자: 가로로 나열하되, 자리가 없으면 자연스럽게 아랫줄로 넘김 */
     div[data-testid="stPills"] > div {
         display: flex !important;
-        width: 100% !important;
-        justify-content: space-between !important;
+        flex-wrap: wrap !important; /* 화면 안 깨지게 줄바꿈 허용 */
+        justify-content: center !important; /* 가운데 정렬 */
+        gap: 20px !important; /* ❤️ 바로 이 부분이 버튼 사이의 넓은 간격입니다 ❤️ */
     }
+    
+    /* 버튼 자체의 모양: 터치하기 좋게 통통하고 동글동글하게 */
     div[data-testid="stPills"] label {
-        flex: 1 1 0px !important;
-        margin: 0 3px !important;
-        border-radius: 10px !important;
-        display: flex !important;
-        justify-content: center !important;
+        margin: 0 !important;
+        padding: 12px 25px !important; /* 클릭하기 편한 안쪽 여백 */
+        border-radius: 25px !important; /* 동그란 모양 */
     }
+    
+    /* 글자 크기 */
     div[data-testid="stPills"] span {
-        font-size: 1.25rem !important;
-        font-weight: 800 !important;
+        font-size: 1.2rem !important;
+        font-weight: bold !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -122,11 +120,10 @@ with tab1:
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
-    # [루틴]
     routine_A = ["간헐적운동법", "루마니안 데드리프트", "백 익스텐션 (로만 체어)", "고블릿 스쿼트"]
     routine_B = ["간헐적운동법", "레그프레스", "롱풀", "업도미널"]
 
-    if date.weekday() in [1, 3, 5]: 
+    if date.weekday() in [1, 3, 5]: # 화, 목, 토
         exercise_list = routine_B
         routine_name = "🔥 화/목/토 루틴"
         style_color = "#FF4B4B" 
@@ -148,7 +145,6 @@ with tab1:
 
     selected_exercise = st.selectbox("운동 종목 (저장 시 자동 넘어감)", exercise_list, index=current_index)
 
-    # [영상 링크]
     video_links = {
         "간헐적운동법": "https://youtu.be/wF6jioOA7tU?si=MAQPRvZJtdNbcS52",
         "루마니안 데드리프트": "https://youtube.com/shorts/f5YwjonCq4M?si=V3lljqm-lOypJopE",
@@ -176,9 +172,8 @@ with tab1:
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
-            # ★ 핵심 꼼수: 보이지 않는 특수 넓은 공백문자(\u3000)를 양옆에 넣어 물리적으로 크기를 찢어발김 ★
-            ws = "\u3000\u3000" # 넙적한 공백 2개
-            pills_opts = [f"{ws}{base_reps}{ws}", f"{ws}{base_reps}{ws} ", f"{ws}{base_reps}{ws}  ", f"{ws}{base_reps}{ws}   "] 
+            # 꼼수 문자열 제거, 깔끔한 15로 복구! 간격은 위의 CSS가 벌려줍니다.
+            pills_opts = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
             
             selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
             if selected_pills:
