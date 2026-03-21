@@ -196,7 +196,8 @@ with tab1:
         with btn_col1:
             skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
         with btn_col2:
-            save_next_btn = st.form_submit_button("💾 시트에 저장 & 다음", type="primary", use_container_width=True)
+            # ★ 버튼 이름 짧게 수정 ★
+            save_next_btn = st.form_submit_button("💾 저장 & 다음", type="primary", use_container_width=True)
 
     if save_next_btn:
         if not sets_done:
