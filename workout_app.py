@@ -16,33 +16,29 @@ calendar.setfirstweekday(calendar.SUNDAY)
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일] 화면 깨짐 원인 제거 & 버튼 사이 '간격(gap)'만 대폭 넓힘 ★
+# ★ [스타일] 버튼 사이 여백 넓게 유지 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 오직 15 버튼(Pills) 그룹에만 적용 (다른 화면 절대 안 건드림) */
     div[data-testid="stPills"] {
         width: 100% !important;
         margin-top: 10px !important;
     }
     
-    /* 버튼들을 감싸는 상자: 가로로 나열하되, 자리가 없으면 자연스럽게 아랫줄로 넘김 */
     div[data-testid="stPills"] > div {
         display: flex !important;
-        flex-wrap: wrap !important; /* 화면 안 깨지게 줄바꿈 허용 */
-        justify-content: center !important; /* 가운데 정렬 */
-        gap: 20px !important; /* ❤️ 바로 이 부분이 버튼 사이의 넓은 간격입니다 ❤️ */
+        flex-wrap: wrap !important; 
+        justify-content: center !important; 
+        gap: 20px !important; 
     }
     
-    /* 버튼 자체의 모양: 터치하기 좋게 통통하고 동글동글하게 */
     div[data-testid="stPills"] label {
         margin: 0 !important;
-        padding: 12px 25px !important; /* 클릭하기 편한 안쪽 여백 */
-        border-radius: 25px !important; /* 동그란 모양 */
+        padding: 12px 25px !important; 
+        border-radius: 25px !important; 
     }
     
-    /* 글자 크기 */
     div[data-testid="stPills"] span {
         font-size: 1.2rem !important;
         font-weight: bold !important;
@@ -172,7 +168,6 @@ with tab1:
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
-            # 꼼수 문자열 제거, 깔끔한 15로 복구! 간격은 위의 CSS가 벌려줍니다.
             pills_opts = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
             
             selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
@@ -220,21 +215,28 @@ with tab2:
             df['day'] = df['dt_obj'].dt.day
             
             now_kst = get_kst_now()
-            selected_year = st.selectbox("연도", [now_kst.year, now_kst.year-1], index=0)
-            selected_month = st.selectbox("월", range(1, 13), index=now_kst.month-1)
+            
+            # ★ 수정됨: 연도와 월을 한 줄에 (가로 배치) ★
+            year_col, month_col = st.columns(2)
+            with year_col:
+                selected_year = st.selectbox("연도", [now_kst.year, now_kst.year-1], index=0)
+            with month_col:
+                selected_month = st.selectbox("월", range(1, 13), index=now_kst.month-1)
             
             mask = (df['dt_obj'].dt.year == selected_year) & (df['dt_obj'].dt.month == selected_month)
             workout_days = df[mask]['day'].unique()
             
             cal = calendar.monthcalendar(selected_year, selected_month)
+            
+            # ★ 수정됨: 다크모드 대응 배경색(#1E1E1E) 및 테두리(#444) 설정 ★
             table_html = """
             <style>
                 .cal-table {width: 100%; text-align: center; border-collapse: collapse; font-size: 14px;}
-                .cal-table th {background-color: #f0f2f6; padding: 8px; border: 1px solid #ddd;}
-                .cal-table td {height: 60px; vertical-align: top; border: 1px solid #ddd; width: 14%; padding: 5px;}
+                .cal-table th {background-color: #1E1E1E; padding: 8px; border: 1px solid #444; color: #ddd;}
+                .cal-table td {height: 60px; vertical-align: top; border: 1px solid #444; width: 14%; padding: 5px;}
                 .sticker {display: block; margin: 3px auto; background-color: #FF4B4B; color: white; border-radius: 50%; width: 22px; height: 22px; line-height: 22px; font-size: 11px;}
             </style>
-            <table class='cal-table'><thead><tr><th style='color:red'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style='color:blue'>토</th></tr></thead><tbody>
+            <table class='cal-table'><thead><tr><th style='color:#FF4B4B'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th style='color:#1E90FF'>토</th></tr></thead><tbody>
             """
             for week in cal:
                 table_html += "<tr>"
