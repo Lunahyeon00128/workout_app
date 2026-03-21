@@ -10,46 +10,44 @@ import time
 # --- 설정: 페이지 및 한국 시간 ---
 st.set_page_config(page_title="Lunahyeon's Workout", layout="centered")
 
-# 한국 시간대(KST) 고정
 KST = pytz.timezone('Asia/Seoul')
-
-# 파이썬 달력의 시작을 일요일(SUNDAY)로 강제 고정
 calendar.setfirstweekday(calendar.SUNDAY)
 
 def get_kst_now():
     return datetime.now(KST)
 
-# ★ [스타일 안전판] 15버튼만 가로로 꽉 차게 (화면 안 깨짐) ★
+# ★ [스타일] 모바일 가로 찢기 + 폰트 확대 ★
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* 오직 '세트 체크(Pills)' 영역만 콕 집어서 넓게 만듭니다 */
+    /* 1. 모바일에서 [무게/횟수] 및 [하단 버튼]이 세로로 쪼개지지 않도록 강제 방어 */
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    div[data-testid="column"] {
+        min-width: 0 !important;
+    }
+
+    /* 2. 15버튼 영역(Pills) 가로 100% 사용 및 분배 */
     div[data-testid="stPills"] {
         width: 100% !important;
     }
     div[data-testid="stPills"] > div {
         display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
         width: 100% !important;
-        gap: 10px !important; 
+        justify-content: space-between !important;
     }
-    
-    /* 4개의 버튼이 부모 넓이의 1/4씩 정확히 나눠가지도록 설정 */
     div[data-testid="stPills"] label {
-        flex: 1 1 0px !important; 
-        padding: 12px 0px !important; 
-        margin: 0 !important;
+        flex: 1 1 0px !important;
+        margin: 0 3px !important;
+        border-radius: 10px !important;
         display: flex !important;
         justify-content: center !important;
-        align-items: center !important;
-        border-radius: 12px !important;
     }
-
     div[data-testid="stPills"] span {
-        font-size: 1.15rem !important;
-        font-weight: bold !important;
+        font-size: 1.25rem !important;
+        font-weight: 800 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -124,16 +122,15 @@ with tab1:
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
-    # ★ 새로운 루틴 적용 (월수금일 / 화목토) ★
+    # [루틴]
     routine_A = ["간헐적운동법", "루마니안 데드리프트", "백 익스텐션 (로만 체어)", "고블릿 스쿼트"]
     routine_B = ["간헐적운동법", "레그프레스", "롱풀", "업도미널"]
 
-    # 1:화, 3:목, 5:토
     if date.weekday() in [1, 3, 5]: 
         exercise_list = routine_B
         routine_name = "🔥 화/목/토 루틴"
         style_color = "#FF4B4B" 
-    else: # 0:월, 2:수, 4:금, 6:일
+    else:
         exercise_list = routine_A
         routine_name = "💪 월/수/금/일 루틴"
         style_color = "#1E90FF" 
@@ -151,7 +148,7 @@ with tab1:
 
     selected_exercise = st.selectbox("운동 종목 (저장 시 자동 넘어감)", exercise_list, index=current_index)
 
-    # ★ 새로운 영상 링크 매핑 ★
+    # [영상 링크]
     video_links = {
         "간헐적운동법": "https://youtu.be/wF6jioOA7tU?si=MAQPRvZJtdNbcS52",
         "루마니안 데드리프트": "https://youtube.com/shorts/f5YwjonCq4M?si=V3lljqm-lOypJopE",
@@ -163,26 +160,26 @@ with tab1:
     }
 
     if selected_exercise in video_links:
-        st.markdown(f"👉 **[{selected_exercise} 자세 영상 보기 (YouTube)]({video_links[selected_exercise]})**")
+        st.markdown(f"👉 **[{selected_exercise} 자세 영상 보기]({video_links[selected_exercise]})**")
 
     with st.form("workout_form", clear_on_submit=True):
         sets_done = []
         save_reps_str = ""
         save_weight_val = 0
 
-        # 간헐적운동법은 완료 체크박스만 제공
         if selected_exercise == "간헐적운동법":
             is_done = st.checkbox("✅ 간헐적운동법 완료!", value=False)
-            if is_done: 
-                sets_done = ["Completed"]
-                save_reps_str = "완료"
-                
+            if is_done: sets_done = ["Completed"]; save_reps_str = "완료"
+            
         else:
             c1, c2 = st.columns(2)
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
-            pills_opts = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
+            # ★ 핵심 꼼수: 보이지 않는 특수 넓은 공백문자(\u3000)를 양옆에 넣어 물리적으로 크기를 찢어발김 ★
+            ws = "\u3000\u3000" # 넙적한 공백 2개
+            pills_opts = [f"{ws}{base_reps}{ws}", f"{ws}{base_reps}{ws} ", f"{ws}{base_reps}{ws}  ", f"{ws}{base_reps}{ws}   "] 
+            
             selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
             if selected_pills:
                 for _ in selected_pills: sets_done.append(str(base_reps))
@@ -190,7 +187,7 @@ with tab1:
 
         memo = st.text_area("메모", placeholder="특이사항 없음", height=70)
         
-        btn_col1, btn_col2 = st.columns(2)
+        btn_col1, btn_col2 = st.columns([1, 2])
         with btn_col1:
             skip_btn = st.form_submit_button("⏭️ 건너뛰기", use_container_width=True)
         with btn_col2:
