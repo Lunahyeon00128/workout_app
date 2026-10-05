@@ -32,12 +32,12 @@ st.markdown("""
         flex-direction: row !important;
         flex-wrap: wrap !important; 
         justify-content: center !important; 
-        gap: 25px !important; 
+        gap: 40px !important; 
     }
     div[data-testid="stPills"] label {
         flex: 0 0 auto !important;
         margin: 0 !important;
-        padding: 10px 20px !important; 
+        padding: 12px 22px !important; 
         border-radius: 20px !important; 
     }
     div[data-testid="stPills"] span {
@@ -134,9 +134,8 @@ with tab1:
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
-    routine_A = ["간헐적운동법", "루마니안 데드리프트", "백 익스텐션 (로만 체어)", "고블릿 스쿼트"]
-    routine_B = ["간헐적운동법", "레그프레스", "롱풀", "업도미널"]
-
+    routine_A = ["롱풀", "루마니안 데드리프트", "간헐적운동법", "카즈하 복근"]
+    routine_B = ["체스트 프레스", "레그프레스", "간헐적운동법", "카즈하 복근"]
     if date.weekday() in [1, 3, 5]: # 화, 목, 토
         exercise_list = routine_B
         routine_name = "🔥 화/목/토 루틴"
@@ -166,7 +165,9 @@ with tab1:
         "고블릿 스쿼트": "https://youtube.com/shorts/ltiO7lZPRdA?si=zJlgEvHCSK00gx0e",
         "레그프레스": "https://youtube.com/shorts/FcHwWI2sulg?si=BQL8nCtplDJprZLa",
         "롱풀": "https://youtube.com/shorts/t6edD5c7QWw?si=R0X5k8scgPocC-pv",
-        "업도미널": "https://youtube.com/shorts/6O0YQY8u-Io?si=mGkzGrR4L0jKi57N"
+        "업도미널": "https://youtube.com/shorts/6O0YQY8u-Io?si=mGkzGrR4L0jKi57N",
+        "체스트 프레스": "https://youtube.com/shorts/qMA5RyYs9hU?si=4Ah_mFY_yn3gWCqJ",
+"카즈하 복근": "https://youtu.be/USJgKSLxDRc?si=TuubqdveMC3Tmz4j",
     }
 
     if selected_exercise in video_links:
@@ -186,7 +187,7 @@ with tab1:
             with c1: ex_weight = st.number_input("무게 (kg)", 0, step=5, value=10)
             with c2: base_reps = st.number_input("목표 횟수", value=15, step=1)
             
-            pills_opts = [f"{base_reps}", f"{base_reps} ", f"{base_reps}  ", f"{base_reps}   "] 
+            pills_opts = ["1", "2", "3", "4"]
             
             selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
             if selected_pills:
