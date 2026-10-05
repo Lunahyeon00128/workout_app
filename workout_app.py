@@ -190,7 +190,13 @@ with tab1:
             
             pills_opts = ["1", "2", "3", "4"]
             
-            selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
+            selected_pills = st.pills(
+    "세트 체크",
+    options=pills_opts,
+    selection_mode="multi",
+    label_visibility="collapsed",
+    width="stretch"
+)
             if selected_pills:
                 for _ in selected_pills: sets_done.append(str(base_reps))
             save_weight_val = ex_weight; save_reps_str = " ".join(sets_done)
