@@ -35,11 +35,15 @@ st.markdown("""
         gap: 40px !important; 
     }
     div[data-testid="stPills"] label {
-        flex: 0 0 auto !important;
-        margin: 0 !important;
-        padding: 12px 22px !important; 
-        border-radius: 20px !important; 
-    }
+    flex: 0 0 auto !important;
+    margin-right: 30px !important;
+    padding: 10px 20px !important;
+    border-radius: 20px !important;
+}
+
+div[data-testid="stPills"] label:last-child {
+    margin-right: 0 !important;
+}
     div[data-testid="stPills"] span {
         font-size: 1.15rem !important;
         font-weight: bold !important;
