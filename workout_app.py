@@ -22,28 +22,27 @@ st.markdown("""
     /* 전체 화면이 좌우로 흔들리거나 튀어나가는 현상 방지 */
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; overflow-x: hidden !important; }
     
-    /* 15 버튼(Pills) 넓은 간격 및 모양 유지 */
+    /* 세트 체크(Pills): 1·2·3·4를 전체 너비에 균등 배치 */
     div[data-testid="stPills"] {
         width: 100% !important;
-        margin-top: 10px !important;
+        margin-top: 12px !important;
     }
     div[data-testid="stPills"] > div {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: wrap !important; 
-        justify-content: center !important; 
-        gap: 40px !important; 
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 22px !important;
+        width: 100% !important;
     }
     div[data-testid="stPills"] label {
-    flex: 0 0 auto !important;
-    margin-right: 30px !important;
-    padding: 10px 20px !important;
-    border-radius: 20px !important;
-}
-
-div[data-testid="stPills"] label:last-child {
-    margin-right: 0 !important;
-}
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 10px 0 !important;
+        border-radius: 999px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
     div[data-testid="stPills"] span {
         font-size: 1.15rem !important;
         font-weight: bold !important;
@@ -140,6 +139,7 @@ with tab1:
 
     routine_A = ["롱풀", "루마니안 데드리프트", "간헐적운동법", "카즈하 복근"]
     routine_B = ["체스트 프레스", "레그프레스", "간헐적운동법", "카즈하 복근"]
+
     if date.weekday() in [1, 3, 5]: # 화, 목, 토
         exercise_list = routine_B
         routine_name = "🔥 화/목/토 루틴"
@@ -165,13 +165,10 @@ with tab1:
     video_links = {
         "간헐적운동법": "https://youtu.be/wF6jioOA7tU?si=MAQPRvZJtdNbcS52",
         "루마니안 데드리프트": "https://youtube.com/shorts/f5YwjonCq4M?si=V3lljqm-lOypJopE",
-        "백 익스텐션 (로만 체어)": "https://youtube.com/shorts/9-iQPQtWAtQ?si=LdlthAj_14UmzDmM",
-        "고블릿 스쿼트": "https://youtube.com/shorts/ltiO7lZPRdA?si=zJlgEvHCSK00gx0e",
         "레그프레스": "https://youtube.com/shorts/FcHwWI2sulg?si=BQL8nCtplDJprZLa",
         "롱풀": "https://youtube.com/shorts/t6edD5c7QWw?si=R0X5k8scgPocC-pv",
-        "업도미널": "https://youtube.com/shorts/6O0YQY8u-Io?si=mGkzGrR4L0jKi57N",
         "체스트 프레스": "https://youtube.com/shorts/qMA5RyYs9hU?si=4Ah_mFY_yn3gWCqJ",
-"카즈하 복근": "https://youtu.be/USJgKSLxDRc?si=TuubqdveMC3Tmz4j",
+        "카즈하 복근": "https://youtu.be/USJgKSLxDRc?si=TuubqdveMC3Tmz4j"
     }
 
     if selected_exercise in video_links:
@@ -182,8 +179,8 @@ with tab1:
         save_reps_str = ""
         save_weight_val = 0
 
-        if selected_exercise == "간헐적운동법":
-            is_done = st.checkbox("✅ 간헐적운동법 완료!", value=False)
+        if selected_exercise in ["간헐적운동법", "카즈하 복근"]:
+            is_done = st.checkbox(f"✅ {selected_exercise} 완료!", value=False)
             if is_done: sets_done = ["Completed"]; save_reps_str = "완료"
             
         else:
