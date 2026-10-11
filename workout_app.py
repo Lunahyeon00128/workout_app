@@ -137,7 +137,7 @@ with tab1:
 
     weight = st.number_input("오늘 몸무게 (kg)", value=46.0, step=0.1, format="%.1f")
 
-    routine_A = ["롱풀", "루마니안 데드리프트", "간헐적운동법", "카즈하 복근"]
+    routine_A = ["롱풀", "백 익스텐션 (로만 체어)", "간헐적운동법", "카즈하 복근"]
     routine_B = ["체스트 프레스", "레그프레스", "간헐적운동법", "카즈하 복근"]
 
     if date.weekday() in [1, 3, 5]: # 화, 목, 토
@@ -164,7 +164,7 @@ with tab1:
 
     video_links = {
         "간헐적운동법": "https://youtu.be/wF6jioOA7tU?si=MAQPRvZJtdNbcS52",
-        "루마니안 데드리프트": "https://youtube.com/shorts/f5YwjonCq4M?si=V3lljqm-lOypJopE",
+        "백 익스텐션 (로만 체어)": "https://youtube.com/shorts/9-iQPQtWAtQ?si=LdlthAj_14UmzDmM",
         "레그프레스": "https://youtube.com/shorts/FcHwWI2sulg?si=BQL8nCtplDJprZLa",
         "롱풀": "https://youtube.com/shorts/t6edD5c7QWw?si=R0X5k8scgPocC-pv",
         "체스트 프레스": "https://youtube.com/shorts/qMA5RyYs9hU?si=4Ah_mFY_yn3gWCqJ",
@@ -190,13 +190,7 @@ with tab1:
             
             pills_opts = ["1", "2", "3", "4"]
             
-            selected_pills = st.pills(
-    "세트 체크",
-    options=pills_opts,
-    selection_mode="multi",
-    label_visibility="collapsed",
-    width="stretch"
-)
+            selected_pills = st.pills("세트 체크", options=pills_opts, selection_mode="multi", label_visibility="collapsed")
             if selected_pills:
                 for _ in selected_pills: sets_done.append(str(base_reps))
             save_weight_val = ex_weight; save_reps_str = " ".join(sets_done)
